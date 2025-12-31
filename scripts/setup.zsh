@@ -70,10 +70,10 @@ if [ -f "$HOME/.zshrc" ]; then
     
     # Check if aliases already exist
     if ! grep -q "g2t-dev" "$HOME/.zshrc"; then
-        cat >> "$HOME/.zshrc" << 'EOF'
+        cat >> "$HOME/.zshrc" << EOF
 
 # Gmail-2-Trello development aliases
-alias g2t-dev='cd /Users/acoven/Documents/2025-01-01_coven/2025/2025-01-01_dev_coven/2025-07-01_gmail2trello'
+alias g2t-dev='cd $PWD'
 alias g2t-lint='npm run lint'
 alias g2t-test='npm run test'
 alias g2t-build='npm run build'
