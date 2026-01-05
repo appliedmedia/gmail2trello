@@ -1,6 +1,4 @@
-# Gmail-2-Trello
-
-Black lives matter. Support the [Equal Justice Initiative](<https://eji.org/about>). ✊🏽✊🏾✊🏿
+# gmail2trello
 
 Gmail+Trello integration. Extension for Chrome browser and other developments.
 
@@ -10,7 +8,7 @@ Support, commonly asked questions, interaction with other fans: https://g2t.supp
 
 ## About
 
-Gmail-2-Trello is a Chrome extension that allows you to easily create Trello cards from Gmail messages. It integrates seamlessly with Gmail's interface and provides a powerful way to manage your email workflow through Trello boards.
+gmail2trello is a Chrome extension that allows you to easily create Trello cards from Gmail messages. It integrates seamlessly with Gmail's interface and provides a powerful way to manage your email workflow through Trello boards.
 
 ## Features
 
