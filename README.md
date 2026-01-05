@@ -2,9 +2,9 @@
 
 Gmail+Trello integration. Extension for Chrome browser and other developments.
 
-Published on Chrome Web Store: https://g2t.pub/chrome
+Published on Chrome Web Store: [https://g2t.info]
 
-Support, commonly asked questions, interaction with other fans: https://g2t.support
+Support, commonly asked questions, interaction with other fans: [https://g2t.support]
 
 ## About
 
