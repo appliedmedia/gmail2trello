@@ -1,0 +1,19 @@
+# Proxy Badge to SVG
+#
+# Lightweight trigger that calls the centralized badge2svg handler
+# in appliedmedia/internal on push to main.
+#
+# Deployed to each client repo's .github/workflows/action-proxy-badge2svg.yml
+
+name: Proxy Badge to SVG
+
+"on":
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  badge:
+    uses: appliedmedia/internal/.github/workflows/action-handler-badge2svg.yml@857a3c4146705ddca03ef9b66af399d7374c8542

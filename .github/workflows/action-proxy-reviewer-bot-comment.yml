@@ -1,0 +1,40 @@
+# Proxy Reviewer Bot Comment
+#
+# This workflow receives calls and forwards them to the
+# central handler in appliedmedia/.github
+#
+# Triggered via API by Cursor agents or other automation.
+# Deployed as action-proxy-reviewer-bot-comment.yml to repos.
+
+name: Proxy Reviewer Bot Comment
+
+"on":
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR Number'
+        required: true
+      message:
+        description: 'Comment Body'
+        required: true
+      from:
+        description: 'Comment author attribution'
+        required: false
+        default: '🤖 Cursor Agent'
+      reply_to_comment_id:
+        description: 'Comment ID to reply to (Optional)'
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  post-comment:
+    uses: appliedmedia/.github/.github/workflows/action-handler-reviewer-bot-comment.yml@main
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      message: ${{ inputs.message }}
+      from: ${{ inputs.from }}
+      reply_to_comment_id: ${{ inputs.reply_to_comment_id || '' }}
