@@ -1,7 +1,7 @@
 # Proxy Reviewer Bot Comment
 #
 # This workflow receives calls and forwards them to the
-# central handler in appliedmedia/.github
+# central handler in appliedmedia/internal
 #
 # Triggered via API by Cursor agents or other automation.
 # Deployed as action-proxy-reviewer-bot-comment.yml to repos.
@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   post-comment:
-    uses: appliedmedia/.github/.github/workflows/action-handler-reviewer-bot-comment.yml@main
+    uses: appliedmedia/internal/.github/workflows/action-handler-reviewer-bot-comment.yml@main
     with:
       pr_number: ${{ inputs.pr_number }}
       message: ${{ inputs.message }}
