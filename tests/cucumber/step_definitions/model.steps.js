@@ -491,3 +491,82 @@ Then('Model submit does not throw', function () {
     this.instance.submit({ title: 'Test Card', description: 'Test Description', listId: '1' });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Board change cascade steps
+// ---------------------------------------------------------------------------
+
+Given('a spy on Model loadTrelloLists', function () {
+  this._loadTrelloListsSpy = createMockFn();
+  this.instance.loadTrelloLists = this._loadTrelloListsSpy;
+});
+
+Given('a spy on Model loadTrelloLabels', function () {
+  this._loadTrelloLabelsSpy = createMockFn();
+  this.instance.loadTrelloLabels = this._loadTrelloLabelsSpy;
+});
+
+Given('a spy on Model loadTrelloMembers', function () {
+  this._loadTrelloMembersSpy = createMockFn();
+  this.instance.loadTrelloMembers = this._loadTrelloMembersSpy;
+});
+
+Given('a spy on Model loadTrelloCards', function () {
+  this._loadTrelloCardsSpy = createMockFn();
+  this.instance.loadTrelloCards = this._loadTrelloCardsSpy;
+});
+
+Given('spies on Model loadTrelloLists and loadTrelloLabels and loadTrelloMembers', function () {
+  this._loadTrelloListsSpy = createMockFn();
+  this._loadTrelloLabelsSpy = createMockFn();
+  this._loadTrelloMembersSpy = createMockFn();
+  this.instance.loadTrelloLists = this._loadTrelloListsSpy;
+  this.instance.loadTrelloLabels = this._loadTrelloLabelsSpy;
+  this.instance.loadTrelloMembers = this._loadTrelloMembersSpy;
+});
+
+When('handleBoardChanged is called with boardId {string}', function (boardId) {
+  try {
+    this.instance.handleBoardChanged({}, { boardId });
+    this.error = null;
+  } catch (e) {
+    this.error = e;
+  }
+});
+
+When('handleListChanged is called with listId {string}', function (listId) {
+  try {
+    this.instance.handleListChanged({}, { listId });
+    this.error = null;
+  } catch (e) {
+    this.error = e;
+  }
+});
+
+Then('the loadTrelloLists spy was called', function () {
+  assert.ok(this._loadTrelloListsSpy.mock.callCount() > 0, 'Expected loadTrelloLists to have been called');
+});
+
+Then('the loadTrelloLabels spy was called', function () {
+  assert.ok(this._loadTrelloLabelsSpy.mock.callCount() > 0, 'Expected loadTrelloLabels to have been called');
+});
+
+Then('the loadTrelloMembers spy was called', function () {
+  assert.ok(this._loadTrelloMembersSpy.mock.callCount() > 0, 'Expected loadTrelloMembers to have been called');
+});
+
+Then('all three cascade spies were called once each', function () {
+  assert.strictEqual(this._loadTrelloListsSpy.mock.callCount(), 1, 'loadTrelloLists called once');
+  assert.strictEqual(this._loadTrelloLabelsSpy.mock.callCount(), 1, 'loadTrelloLabels called once');
+  assert.strictEqual(this._loadTrelloMembersSpy.mock.callCount(), 1, 'loadTrelloMembers called once');
+});
+
+Then('the loadTrelloCards spy was called with {string}', function (expected) {
+  assert.ok(this._loadTrelloCardsSpy.mock.callCount() > 0, 'Expected loadTrelloCards to have been called');
+  const lastCall = this._loadTrelloCardsSpy.mock.calls[this._loadTrelloCardsSpy.mock.calls.length - 1];
+  assert.strictEqual(lastCall.arguments[0], expected);
+});
+
+Then('the loadTrelloCards spy was called {int} times', function (count) {
+  assert.strictEqual(this._loadTrelloCardsSpy.mock.callCount(), count);
+});

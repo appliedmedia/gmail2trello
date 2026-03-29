@@ -138,3 +138,111 @@ Feature: Trel Class
   Scenario: Missing app.persist handled gracefully
     Given a Trel created without persist
     Then the Trel instance app.persist is undefined
+
+  # ------------------------------------------------------------------
+  # createCard Payload Verification
+  # ------------------------------------------------------------------
+
+  Scenario: createCard sends correct name from title field
+    Given trelloAuthorized is set to "true"
+    And a spy on wrapApiCall
+    When createCard is called with title "My Card Title"
+    Then wrapApiCall was called with "post" and "cards"
+    And the wrapApiCall params have name "My Card Title"
+
+  Scenario: createCard sends correct name from subject field as fallback
+    Given trelloAuthorized is set to "true"
+    And a spy on wrapApiCall
+    When createCard is called with subject "Email Subject" and no title
+    Then wrapApiCall was called with "post" and "cards"
+    And the wrapApiCall params have name "Email Subject"
+
+  Scenario: createCard sends idLabels when labels provided
+    Given trelloAuthorized is set to "true"
+    And a spy on wrapApiCall
+    When createCard is called with labels "labelA,labelB"
+    Then the wrapApiCall params have idLabels "labelA,labelB"
+
+  Scenario: createCard sends idMembers when members provided
+    Given trelloAuthorized is set to "true"
+    And a spy on wrapApiCall
+    When createCard is called with members "memberA,memberB"
+    Then the wrapApiCall params have idMembers "memberA,memberB"
+
+  Scenario: createCard sends due date when dueDate provided
+    Given trelloAuthorized is set to "true"
+    And a spy on wrapApiCall
+    When createCard is called with dueDate "2026-04-01"
+    Then the wrapApiCall params have due "2026-04-01"
+
+  Scenario: createCard sends pos top when no card selected
+    Given trelloAuthorized is set to "true"
+    And a spy on wrapApiCall
+    When createCard is called with no position specified
+    Then the wrapApiCall params have pos "top"
+
+  Scenario: createCard sends pos bottom for position below
+    Given trelloAuthorized is set to "true"
+    And a spy on wrapApiCall
+    When createCard is called with position "below"
+    Then the wrapApiCall params have pos "bottom"
+
+  Scenario: createCard with null data emits invalidFormData
+    When createCard is called with null data on Trel
+    Then events.emit was called with "invalidFormData"
+
+  # ------------------------------------------------------------------
+  # Success and Failure Callback Paths
+  # ------------------------------------------------------------------
+
+  Scenario: getUser_success stores user data in persist and emits trelloUserReady
+    When getUser_success is called with user data on Trel
+    Then app.persist.user has fullName "Test Trello User"
+    And events.emit was called with "trelloUserReady"
+
+  Scenario: getBoards_success stores boards in temp and emits trelloUserAndBoardsReady
+    When getBoards_success is called with boards data on Trel
+    Then app.temp.boards has 2 items
+    And events.emit was called with "trelloUserAndBoardsReady"
+
+  Scenario: getLists_success stores lists in temp and emits loadTrelloLists_success
+    When getLists_success is called with lists data on Trel
+    Then app.temp.lists has 3 items
+    And events.emit was called with "loadTrelloLists_success"
+
+  Scenario: getCards_success stores cards in temp and emits loadTrelloCards_success
+    When getCards_success is called with cards data on Trel
+    Then app.temp.cards has 2 items
+    And events.emit was called with "loadTrelloCards_success"
+
+  Scenario: createCard_success emits createCard_success with cardId
+    When createCard_success is called on Trel with response id "card-999"
+    Then events.emit was called with "createCard_success"
+    And the createCard_success event data has cardId "card-999"
+
+  # ------------------------------------------------------------------
+  # Version Counter for Stale Response Discard (baseline tests)
+  # These document current behavior: there is NO versioning yet,
+  # so stale responses are NOT discarded. These are baseline tests
+  # documenting the race condition before a future fix.
+  # ------------------------------------------------------------------
+
+  Scenario: two sequential getLists calls both update temp.lists (no versioning yet)
+    # Baseline: both callbacks overwrite temp.lists; the last one wins
+    When getLists_success is called with lists data on Trel
+    And getLists_success is called with 1 list on Trel
+    Then app.temp.lists has 1 items
+
+  Scenario: two sequential getCards calls both update temp.cards (no versioning yet)
+    # Baseline: both callbacks overwrite temp.cards; the last one wins
+    When getCards_success is called with cards data on Trel
+    And getCards_success is called with 1 card on Trel
+    Then app.temp.cards has 1 items
+
+  Scenario: rapid board switch does not prevent stale data (documenting the race condition)
+    # Baseline: if board A lists arrive after board B lists, board A data overwrites board B
+    # This documents the current broken behavior before versioning is added
+    Given trelloAuthorized is set to "true"
+    When getLists_success is called with lists named "boardB-list"
+    And getLists_success is called with lists named "boardA-list-stale"
+    Then the first list name is "boardA-list-stale"

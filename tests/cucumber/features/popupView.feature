@@ -82,3 +82,139 @@ Feature: PopupView Class
     Then the form is an instance of PopupForm
     And the form parent is the popupView
     And the form app is the same app
+
+  # --------------------------------------------------------------------------
+  # forceRedraw
+  # --------------------------------------------------------------------------
+
+  Scenario: forceRedraw removes g2tButton from DOM
+    Given popup DOM with button and popup elements
+    When handleForceRedraw is called on the popupView
+    Then the popupView html add_to_trello is cleared
+
+  Scenario: forceRedraw removes g2tPopup from DOM
+    Given popup DOM with button and popup elements
+    When handleForceRedraw is called on the popupView
+    Then the popupView html add_to_trello is cleared
+
+  Scenario: forceRedraw resets toolBar to null
+    Given popup DOM with button and popup elements
+    And the popupView has a toolbar reference
+    When handleForceRedraw is called on the popupView
+    Then the popupView toolBar is null
+
+  Scenario: forceRedraw calls detect to restart
+    Given popup DOM with button and popup elements
+    When handleForceRedraw is called on the popupView
+    Then the popupView toolBar is null
+
+  # --------------------------------------------------------------------------
+  # periodicChecks
+  # --------------------------------------------------------------------------
+
+  Scenario: periodicChecks calls validateButtonState
+    Given a spy on validateButtonState
+    When periodicChecks is called on the popupView
+    Then validateButtonState was called
+
+  Scenario: periodicChecks recreates button if missing from DOM
+    Given popup DOM with no button
+    And the popupView gmailView preDetect returns true with toolbar
+    When periodicChecks is called on the popupView
+    Then finalCreatePopup was invoked
+
+  Scenario: periodicChecks does NOT recreate if button exists
+    Given popup DOM with existing button in toolbar
+    And the popupView gmailView preDetect returns false
+    When periodicChecks is called on the popupView
+    Then finalCreatePopup was not invoked
+
+  Scenario: periodicChecks interval is 5000ms
+    Given a fresh PopupView capturing setInterval
+    Then the captured setInterval delay is 5000
+
+  # --------------------------------------------------------------------------
+  # dropdown change handlers
+  # --------------------------------------------------------------------------
+
+  Scenario: board change writes to app.persist.boardId
+    Given popup DOM with full form selects
+    And popupView handlePopupLoaded is called
+    When the board select is changed to "board-xyz"
+    Then persist boardId equals "board-xyz"
+
+  Scenario: board change emits boardChanged event
+    Given popup DOM with full form selects
+    And popupView handlePopupLoaded is called
+    When the board select is changed to "board-xyz"
+    Then events.emit was called with "boardChanged"
+
+  Scenario: list change writes to app.persist.listId
+    Given popup DOM with full form selects
+    And popupView handlePopupLoaded is called
+    When the list select is changed to "list-abc"
+    Then persist listId equals "list-abc"
+
+  Scenario: list change emits listChanged event
+    Given popup DOM with full form selects
+    And popupView handlePopupLoaded is called
+    When the list select is changed to "list-abc"
+    Then events.emit was called with "listChanged"
+
+  Scenario: card change writes app.persist.cardId and app.temp cardPos Members Labels
+    Given popup DOM with full form selects
+    And popupView handlePopupLoaded is called
+    And the card select has an option with pos members labels
+    When the card select is changed
+    Then app.persist.cardId is set from the card option
+    And app.temp.cardPos is set from the card option
+
+  # --------------------------------------------------------------------------
+  # showPopup hidePopup
+  # --------------------------------------------------------------------------
+
+  Scenario: showPopup emits onPopupVisible
+    Given popup DOM for show hide tests
+    When showPopup is called on the popupView
+    Then events.emit was called with "onPopupVisible"
+
+  Scenario: hidePopup hides popup element
+    Given popup DOM for show hide tests
+    And the popup is currently visible
+    When hidePopup is called on the popupView
+    Then the popup element is hidden
+
+  # --------------------------------------------------------------------------
+  # popup creation
+  # --------------------------------------------------------------------------
+
+  Scenario: finalCreatePopup creates button and popup in toolbar
+    Given popup DOM with toolbar only
+    And the popupView has html popup content
+    When finalCreatePopup is called on the popupView instance
+    Then the toolbar contains a g2tButton element
+
+  Scenario: finalCreatePopup emits popupLoaded
+    Given popup DOM with toolbar only
+    And the popupView has html popup content
+    When finalCreatePopup is called on the popupView instance
+    Then events.emit was called with "popupLoaded"
+
+  # --------------------------------------------------------------------------
+  # popup creation dedup for race condition fix
+  # --------------------------------------------------------------------------
+
+  Scenario: second finalCreatePopup call does not create duplicate button
+    Given popup DOM with toolbar only
+    And the popupView has html popup content
+    When finalCreatePopup is called on the popupView instance
+    And finalCreatePopup is called on the popupView instance again
+    Then the toolbar contains exactly 1 g2tButton element
+
+  Scenario: forceRedraw resets creation flag allowing new creation
+    Given popup DOM with toolbar only
+    And the popupView has html popup content
+    When finalCreatePopup is called on the popupView instance
+    And handleForceRedraw is called then toolbar is re-set
+    And finalCreatePopup is called on the popupView instance again
+    Then the toolbar contains a g2tButton element

@@ -237,3 +237,61 @@ Feature: GmailView Class
 
   Scenario: ParseData methods should work with gmailView defined
     Then the gmailView instance is defined
+
+  # --------------------------------------------------------------------------
+  # parseData extraction
+  # --------------------------------------------------------------------------
+
+  Scenario: parseData extracts subject from hP element
+    Given the DOM contains a Gmail email with subject "Budget Review Q1"
+    When parseData is called on the gmailView
+    Then the parsed data subject is "Budget Review Q1"
+
+  Scenario: parseData extracts email body from a3s aiL element
+    Given the DOM contains a Gmail email with body "Please review the attached budget."
+    When parseData is called on the gmailView
+    Then the parsed data bodyAsRaw contains "Please review the attached budget."
+
+  Scenario: parseData extracts sender from span gD element
+    Given the DOM contains a Gmail email from "Alice Smith" with address "alice@corp.com"
+    When parseData is called on the gmailView
+    Then the parsed data bodyAsRaw contains "Alice Smith"
+    And the parsed data bodyAsMd contains "alice@corp.com"
+
+  Scenario: parseData extracts timestamp from gH gK g3 element
+    Given the DOM contains a Gmail email with timestamp "2025-06-15 3:45 PM"
+    When parseData is called on the gmailView
+    Then the parsed data time is "2025-06-15 3:45 PM"
+
+  Scenario: parseData extracts attachments from span aZo element
+    Given the DOM contains a Gmail email with attachment "application/pdf:report.pdf:https://example.com/report.pdf"
+    When parseData is called on the gmailView
+    Then the parsed data has 1 attachment
+    And the first attachment name is "report.pdf"
+
+  Scenario: parseData extracts inline images from img elements
+    Given the DOM contains a Gmail email with an inline image "https://ci3.googleusercontent.com/proxy/testimage" alt "Logo"
+    When parseData is called on the gmailView
+    Then the parsed data has 1 image
+    And the first image name is "Logo"
+
+  Scenario: parseData extracts CC recipients from span g2 element
+    Given the DOM contains a Gmail email with CC "Bob Jones" at "bob@example.com"
+    When parseData is called on the gmailView
+    Then the parsed data ccAsRaw contains "Bob Jones"
+    And the parsed data ccAsRaw contains "bob@example.com"
+
+  Scenario: parseData returns empty values when no email is open
+    Given the DOM contains no Gmail email
+    When parseData is called on the gmailView
+    Then the parsed data is undefined
+
+  Scenario: parseData handles email with no attachments
+    Given the DOM contains a Gmail email with no attachments
+    When parseData is called on the gmailView
+    Then the parsed data has 0 attachments
+
+  Scenario: parseData handles email with no body
+    Given the DOM contains a Gmail email with empty body
+    When parseData is called on the gmailView
+    Then the parsed data bodyAsRaw contains "From:"

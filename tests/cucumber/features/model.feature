@@ -330,3 +330,44 @@ Feature: Model Class
   Scenario: Error recovery gracefully
     When Model loadTrelloBoards_failure then loadTrelloBoards_success is called
     Then app.temp.boards has 1 items
+
+  # ------------------------------------------------------------------
+  # Board Change Cascade
+  # ------------------------------------------------------------------
+
+  Scenario: boardChanged triggers loadTrelloLists
+    Given Model trelloAuthorized is set to true
+    And a spy on Model loadTrelloLists
+    When handleBoardChanged is called with boardId "board-abc"
+    Then the loadTrelloLists spy was called
+
+  Scenario: boardChanged triggers loadTrelloLabels
+    Given Model trelloAuthorized is set to true
+    And a spy on Model loadTrelloLabels
+    When handleBoardChanged is called with boardId "board-abc"
+    Then the loadTrelloLabels spy was called
+
+  Scenario: boardChanged triggers loadTrelloMembers
+    Given Model trelloAuthorized is set to true
+    And a spy on Model loadTrelloMembers
+    When handleBoardChanged is called with boardId "board-abc"
+    Then the loadTrelloMembers spy was called
+
+  Scenario: all three API calls fire in parallel on boardChanged
+    Given Model trelloAuthorized is set to true
+    And spies on Model loadTrelloLists and loadTrelloLabels and loadTrelloMembers
+    When handleBoardChanged is called with boardId "board-abc"
+    Then all three cascade spies were called once each
+
+  Scenario: listChanged triggers loadTrelloCards
+    Given Model trelloAuthorized is set to true
+    And a spy on Model loadTrelloCards
+    When handleListChanged is called with listId "list-xyz"
+    Then the loadTrelloCards spy was called with "list-xyz"
+
+  Scenario: listChanged with same listId still triggers loadTrelloCards
+    Given Model trelloAuthorized is set to true
+    And a spy on Model loadTrelloCards
+    When handleListChanged is called with listId "list-same"
+    And handleListChanged is called with listId "list-same"
+    Then the loadTrelloCards spy was called 2 times

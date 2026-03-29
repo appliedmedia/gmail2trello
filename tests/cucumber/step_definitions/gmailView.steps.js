@@ -335,3 +335,189 @@ Then('the preprocess is populated', function () {
 Then('the gmailView instance is defined', function () {
   assert.notStrictEqual(this.instance, undefined);
 });
+
+// ---------------------------------------------------------------------------
+// parseData extraction -- helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a Gmail-like DOM inside document.body for parseData tests.
+ * Options: subject, body, fromName, fromEmail, timestamp, attachmentUrl, imgSrc, imgAlt, ccName, ccEmail
+ */
+function buildGmailDOM(doc, opts = {}) {
+  const subject = opts.subject ?? 'Test Subject';
+  const body = opts.body ?? '<p>Default body</p>';
+  const fromName = opts.fromName ?? 'Test User';
+  const fromEmail = opts.fromEmail ?? 'test@example.com';
+  const timestamp = opts.timestamp ?? '2025-01-01 12:00 PM';
+  const attachmentHtml = opts.attachmentUrl
+    ? `<span class="aZo" download_url="${opts.attachmentUrl}">attachment</span>`
+    : (opts.noAttachments ? '' : '');
+  const imgHtml = opts.imgSrc
+    ? `<img src="${opts.imgSrc}" alt="${opts.imgAlt || ''}" type="image/jpeg">`
+    : '';
+  const ccHtml = opts.ccName != null
+    ? `<span class="g2" email="${opts.ccEmail || ''}" name="${opts.ccName}">CC</span>`
+    : '';
+
+  doc.body.innerHTML = `
+    <div class="nH">
+      <div class="h7" g2t_event="1">
+        <div class="adn ads">
+          <div class="gs">
+            <div class="a3s aiL">${body}${imgHtml}</div>
+            <div class="gH"><div class="gK"><div class="g3" title="${timestamp}">${timestamp}</div></div></div>
+            ${ccHtml}
+            <span class="gD" name="${fromName}" email="${fromEmail}">${fromName}</span>
+            ${attachmentHtml}
+          </div>
+        </div>
+      </div>
+      <div class="hP">${subject}</div>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// parseData extraction -- Given steps
+// ---------------------------------------------------------------------------
+
+Given('the DOM contains a Gmail email with subject {string}', function (subject) {
+  buildGmailDOM(sharedDocument, { subject });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email with body {string}', function (body) {
+  buildGmailDOM(sharedDocument, { body: `<p>${body}</p>` });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email from {string} with address {string}', function (name, email) {
+  buildGmailDOM(sharedDocument, { fromName: name, fromEmail: email });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email with timestamp {string}', function (timestamp) {
+  buildGmailDOM(sharedDocument, { timestamp });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email with attachment {string}', function (downloadUrl) {
+  buildGmailDOM(sharedDocument, { attachmentUrl: downloadUrl });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email with an inline image {string} alt {string}', function (src, alt) {
+  buildGmailDOM(sharedDocument, { imgSrc: src, imgAlt: alt });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email with CC {string} at {string}', function (ccName, ccEmail) {
+  buildGmailDOM(sharedDocument, { ccName, ccEmail });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains no Gmail email', function () {
+  sharedDocument.body.innerHTML = '<div class="empty"></div>';
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email with no attachments', function () {
+  buildGmailDOM(sharedDocument, { noAttachments: true });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+Given('the DOM contains a Gmail email with empty body', function () {
+  buildGmailDOM(sharedDocument, { body: '' });
+  this.instance.$root = $('body');
+  this.instance.parsingData = false;
+});
+
+// ---------------------------------------------------------------------------
+// parseData extraction -- When steps
+// ---------------------------------------------------------------------------
+
+When('parseData is called on the gmailView', function () {
+  // Provide stubs for utility methods that parseData depends on
+  if (!this.app.utils.getSelectedText) {
+    this.app.utils.getSelectedText = () => '';
+  }
+  if (!this.app.utils.markdownify) {
+    this.app.utils.markdownify = ($el, features, preprocess) => ($el.text() || '');
+  }
+  this._parsedData = this.instance.parseData({ fullName: 'Test User' });
+});
+
+// ---------------------------------------------------------------------------
+// parseData extraction -- Then steps
+// ---------------------------------------------------------------------------
+
+Then('the parsed data subject is {string}', function (expected) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.strictEqual(this._parsedData.subject, expected);
+});
+
+Then('the parsed data bodyAsRaw contains {string}', function (expected) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.ok(
+    this._parsedData.bodyAsRaw.includes(expected),
+    `Expected bodyAsRaw to contain "${expected}" but got "${this._parsedData.bodyAsRaw}"`,
+  );
+});
+
+Then('the parsed data bodyAsMd contains {string}', function (expected) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.ok(
+    this._parsedData.bodyAsMd.includes(expected),
+    `Expected bodyAsMd to contain "${expected}" but got "${this._parsedData.bodyAsMd}"`,
+  );
+});
+
+Then('the parsed data time is {string}', function (expected) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.strictEqual(this._parsedData.time, expected);
+});
+
+Then('the parsed data has {int} attachment(s)', function (count) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.strictEqual(this._parsedData.attachment.length, count);
+});
+
+Then('the first attachment name is {string}', function (expected) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.ok(this._parsedData.attachment.length > 0, 'Expected at least one attachment');
+  assert.strictEqual(this._parsedData.attachment[0].name, expected);
+});
+
+Then('the parsed data has {int} image(s)', function (count) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.strictEqual(this._parsedData.image.length, count);
+});
+
+Then('the first image name is {string}', function (expected) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.ok(this._parsedData.image.length > 0, 'Expected at least one image');
+  assert.strictEqual(this._parsedData.image[0].name, expected);
+});
+
+Then('the parsed data ccAsRaw contains {string}', function (expected) {
+  assert.ok(this._parsedData, 'parseData should return data');
+  assert.ok(
+    this._parsedData.ccAsRaw.includes(expected),
+    `Expected ccAsRaw to contain "${expected}" but got "${this._parsedData.ccAsRaw}"`,
+  );
+});
+
+Then('the parsed data is undefined', function () {
+  assert.strictEqual(this._parsedData, undefined);
+});
+

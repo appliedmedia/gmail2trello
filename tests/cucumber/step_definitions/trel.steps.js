@@ -165,3 +165,129 @@ Then('the Trel instance app is undefined', function () {
 Then('the Trel instance app.persist is undefined', function () {
   assert.strictEqual(this.instance.app.persist, undefined);
 });
+
+// ---------------------------------------------------------------------------
+// createCard payload verification steps
+// ---------------------------------------------------------------------------
+
+When('createCard is called with title {string}', function (title) {
+  this.instance.createCard({ title, listId: 'list-1', boardId: 'board-1' });
+});
+
+When('createCard is called with subject {string} and no title', function (subject) {
+  this.instance.createCard({ subject, listId: 'list-1', boardId: 'board-1' });
+});
+
+When('createCard is called with labels {string}', function (labelsStr) {
+  const labels = labelsStr.split(',');
+  this.instance.createCard({ title: 'Test', listId: 'list-1', boardId: 'board-1', labels });
+});
+
+When('createCard is called with members {string}', function (membersStr) {
+  const members = membersStr.split(',');
+  this.instance.createCard({ title: 'Test', listId: 'list-1', boardId: 'board-1', members });
+});
+
+When('createCard is called with dueDate {string}', function (dueDate) {
+  this.instance.createCard({ title: 'Test', listId: 'list-1', boardId: 'board-1', dueDate });
+});
+
+When('createCard is called with no position specified', function () {
+  this.instance.createCard({ title: 'Test', listId: 'list-1', boardId: 'board-1' });
+});
+
+When('createCard is called with position {string}', function (position) {
+  this.instance.createCard({ title: 'Test', listId: 'list-1', boardId: 'board-1', position });
+});
+
+When('createCard is called with null data on Trel', function () {
+  this.instance.createCard(null);
+});
+
+Then('the wrapApiCall params have name {string}', function (expected) {
+  const calls = this._wrapApiCallSpy.mock.calls;
+  assert.ok(calls.length > 0, 'Expected wrapApiCall to have been called');
+  const params = calls[calls.length - 1].arguments[2];
+  assert.strictEqual(params.name, expected);
+});
+
+Then('the wrapApiCall params have idLabels {string}', function (expected) {
+  const calls = this._wrapApiCallSpy.mock.calls;
+  const params = calls[calls.length - 1].arguments[2];
+  assert.deepStrictEqual(params.idLabels, expected.split(','));
+});
+
+Then('the wrapApiCall params have idMembers {string}', function (expected) {
+  const calls = this._wrapApiCallSpy.mock.calls;
+  const params = calls[calls.length - 1].arguments[2];
+  assert.deepStrictEqual(params.idMembers, expected.split(','));
+});
+
+Then('the wrapApiCall params have due {string}', function (expected) {
+  const calls = this._wrapApiCallSpy.mock.calls;
+  const params = calls[calls.length - 1].arguments[2];
+  assert.strictEqual(params.due, expected);
+});
+
+Then('the wrapApiCall params have pos {string}', function (expected) {
+  const calls = this._wrapApiCallSpy.mock.calls;
+  const params = calls[calls.length - 1].arguments[2];
+  assert.strictEqual(params.pos, expected);
+});
+
+// ---------------------------------------------------------------------------
+// Success/failure callback path steps
+// ---------------------------------------------------------------------------
+
+When('getUser_success is called with user data on Trel', function () {
+  this.instance.getUser_success({ id: 'u1', fullName: 'Test Trello User' });
+});
+
+Then('app.persist.user has fullName {string}', function (expected) {
+  assert.strictEqual(this.app.persist.user.fullName, expected);
+});
+
+When('getBoards_success is called with boards data on Trel', function () {
+  this.instance.getBoards_success([{ id: 'b1', name: 'Board 1' }, { id: 'b2', name: 'Board 2' }]);
+});
+
+When('getLists_success is called with lists data on Trel', function () {
+  this.instance.getLists_success([{ id: 'l1', name: 'List 1' }, { id: 'l2', name: 'List 2' }, { id: 'l3', name: 'List 3' }]);
+});
+
+When('getCards_success is called with cards data on Trel', function () {
+  this.instance.getCards_success([{ id: 'c1', name: 'Card 1' }, { id: 'c2', name: 'Card 2' }]);
+});
+
+When('createCard_success is called on Trel with response id {string}', function (cardId) {
+  this.instance.createCard_success({ title: 'Test' }, { id: cardId });
+});
+
+Then('the createCard_success event data has cardId {string}', function (expected) {
+  const calls = this.app.events.emit.mock.calls;
+  const call = calls.find(c => c.arguments[0] === 'createCard_success');
+  assert.ok(call, 'Expected createCard_success event');
+  assert.strictEqual(call.arguments[1].data.cardId, expected);
+});
+
+// ---------------------------------------------------------------------------
+// Version counter / stale response steps
+// ---------------------------------------------------------------------------
+
+When('getLists_success is called with {int} list on Trel', function (count) {
+  const data = Array.from({ length: count }, (_, i) => ({ id: `l-${i}`, name: `List ${i}` }));
+  this.instance.getLists_success(data);
+});
+
+When('getCards_success is called with {int} card on Trel', function (count) {
+  const data = Array.from({ length: count }, (_, i) => ({ id: `c-${i}`, name: `Card ${i}` }));
+  this.instance.getCards_success(data);
+});
+
+When('getLists_success is called with lists named {string}', function (name) {
+  this.instance.getLists_success([{ id: 'l-1', name }]);
+});
+
+Then('the first list name is {string}', function (expected) {
+  assert.strictEqual(this.app.temp.lists[0].name, expected);
+});
