@@ -44,11 +44,12 @@
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "jquery": "^3.7.1",
-    "jsdom": "^27.4.0",
+    "jsdom": "24.1.3",
     "prettier": "^3.8.1"
   },
   "jest": {
     "testEnvironment": "jsdom",
+    "coverageProvider": "v8",
     "verbose": false,
     "silent": false,
     "testMatch": [
@@ -86,6 +87,10 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "pinnedDependencyNotes": {
+    "jsdom@24.1.3": "Pinned 2026-03-29. jsdom >=25 pulls html-encoding-sniffer@6 which depends on @exodus/bytes (ESM-only, type:module). Jest 30 CJS require chain cannot load ESM deps nested in node_modules/jsdom/node_modules/. Revisit when Jest natively supports ESM or jsdom ships a CJS-compatible path.",
+    "coverageProvider:v8": "Switched from default babel-istanbul 2026-03-29. babel-plugin-istanbul@7 -> test-exclude@6 calls promisify(require('glob')), but the glob>=10.5 override in this file forces a version where glob is an object not a function. V8 coverage bypasses babel entirely."
   },
   "overrides": {
     "js-yaml": ">=4.1.1",
