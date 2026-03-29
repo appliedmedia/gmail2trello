@@ -1,0 +1,6 @@
+*.min.js
+*.min.css
+chrome_manifest_v3/lib/
+node_modules/
+coverage/
+Ω_archives_ignore/
