@@ -7,6 +7,7 @@
     "dev": "echo '🚀 Development Setup: 1) Open chrome://extensions/ 2) Enable Developer mode 3) Load unpacked: chrome_manifest_v3/ 4) Go to Gmail to test'",
     "build": "npm run lint:fix && npm run format && npm audit --audit-level=moderate && cd chrome_manifest_v3 && zip -r ../gmail-2-trello-$(node -p \"require('./manifest.json').version\").zip .",
     "test": "jest",
+    "test:cucumber": "npx cucumber-js 'tests/cucumber/features/**/*.feature' --require 'tests/cucumber/support/**/*.js' --require 'tests/cucumber/step_definitions/**/*.js'",
     "lint": "eslint chrome_manifest_v3/**/*.js",
     "lint:fix": "eslint chrome_manifest_v3/**/*.js --fix",
     "format": "prettier --write chrome_manifest_v3/**/*.js",
@@ -37,6 +38,7 @@
   },
   "homepage": "https://g2t.support",
   "devDependencies": {
+    "@cucumber/cucumber": "^12.7.0",
     "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
@@ -90,7 +92,8 @@
   },
   "pinnedDependencyNotes": {
     "jsdom@24.1.3": "Pinned 2026-03-29. jsdom >=25 pulls html-encoding-sniffer@6 which depends on @exodus/bytes (ESM-only, type:module). Jest 30 CJS require chain cannot load ESM deps nested in node_modules/jsdom/node_modules/. Revisit when Jest natively supports ESM or jsdom ships a CJS-compatible path.",
-    "coverageProvider:v8": "Switched from default babel-istanbul 2026-03-29. babel-plugin-istanbul@7 -> test-exclude@6 calls promisify(require('glob')), but the glob>=10.5 override in this file forces a version where glob is an object not a function. V8 coverage bypasses babel entirely."
+    "coverageProvider:v8": "Switched from default babel-istanbul 2026-03-29. babel-plugin-istanbul@7 -> test-exclude@6 calls promisify(require('glob')), but the glob>=10.5 override in this file forces a version where glob is an object not a function. V8 coverage bypasses babel entirely.",
+    "@cucumber/cucumber": "Added 2026-03-29. BDD test framework with .feature files and reusable step definitions."
   },
   "overrides": {
     "js-yaml": ">=4.1.1",
