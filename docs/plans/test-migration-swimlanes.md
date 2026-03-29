@@ -92,13 +92,22 @@ Each lane is an independent test file migration that can run in parallel. No lan
     └────────────┘      └────────────┘
 
     ══════════════════════════════════════════════════════════════════
-    LANE D: NEW FILES (no Jest equivalent, write fresh)
+    LANE D: NEW FILES + TARGETED FIX TESTS (no Jest equivalent, write fresh)
     ══════════════════════════════════════════════════════════════════
-    ┌────────────┐      ┌────────────┐
-    │ Observer   │      │Orchestrator│
-    │  ~18 new   │      │  ~51 new   │
-    │            │      │ (Wave 1)   │
-    └────────────┘      └────────────┘
+    ┌────────────┐      ┌────────────┐      ┌────────────┐
+    │ Observer   │      │Trel version│      │Model cascade│
+    │  ~18 new   │      │ counter    │      │ tracker     │
+    │            │      │  ~10 new   │      │  ~7 new     │
+    └────────────┘      │(augment    │      │(augment     │
+                        │ existing)  │      │ existing)   │
+                        └────────────┘      └────────────┘
+    ┌────────────┐
+    │PopupForm   │
+    │submit guard│
+    │  ~5 new    │
+    │(augment    │
+    │ existing)  │
+    └────────────┘
 ```
 
 ### Lane A: Simple Classes (4 files, ~160 tests)
@@ -119,7 +128,7 @@ More complex mocking, API interactions. Independent of Lane A.
 | File | Old Tests | New Tests | Est. Time | Pattern |
 |------|----------|----------|-----------|---------|
 | `test_class_model.js` | 55 | 55 | 1.5 hr | Heavy mock.fn() usage, callback chains |
-| `test_class_trel.js` | 23 | 23 + 16 new | 1.5 hr | Auth flow, add versioning + payload tests |
+| `test_class_trel.js` | 23 | 23 + 10 new (version counter) | 1.5 hr | Auth flow, version counter tests added in Lane D |
 | `test_class_goog.js` | 47 | 47 | 1 hr | Chrome API mock patterns |
 | `test_class_app.js` | 36 | 36 | 1 hr | App init, state management |
 
@@ -133,14 +142,18 @@ Most complex -- jQuery DOM, form state, event cascades. Independent of Lanes A a
 | `test_class_popupView.js` | 16 | 16 + 19 new | 1.5 hr | Popup lifecycle, dropdown handlers |
 | `test_class_gmailView.js` | 34 | 34 + 10 new | 2 hr | parseData(), email extraction, fixtures |
 
-### Lane D: New Files (no migration, fresh tests)
+### Lane D: New Files + Targeted Fix Tests (no migration, fresh tests)
 
 Can start immediately -- no old Jest file to port from. Independent of everything.
 
 | File | Tests | Est. Time | Notes |
 |------|-------|-----------|-------|
 | `test_class_observer.js` | ~18 | 2 hr | Mock MutationObserver, test debouncing with fake timers |
-| `test_class_orchestrator.js` | ~51 | 3-4 hr | Pure logic, no DOM. Depends on Wave 1 implementation code. |
+| `test_class_trel.js` (augment) | ~10 | 1-2 hr | Version counter: `_nextVersion`, `_isCurrentVersion`, stale response discard |
+| `test_class_popupForm.js` (augment) | ~5 | 30 min | Submit guard: `_submitting` boolean, reset on success/failure |
+| `test_class_model.js` (augment) | ~7 | 1-2 hr | Board cascade tracker: `_boardLoadPending`, `_completeBoardLoadPart`, stale board ignored |
+
+No `test_class_orchestrator.js` -- there is no orchestrator class. The three targeted fixes are tested in their respective existing test files.
 
 ---
 
@@ -160,14 +173,15 @@ Can start immediately -- no old Jest file to port from. Independent of everythin
 
 Each agent works from `test_utils.js` and the old Jest file as reference. No cross-dependencies.
 
-### Round 2 (after orchestrator code is written)
+### Round 2 (after targeted fix code is written -- Wave 2)
 
 ```
   Agent 5
   ─────────
-  Lane D:
-  Orchestrator
-  (new file, ~51 tests)
+  Lane D additions:
+  Trel version counter tests (~10)
+  PopupForm submit guard tests (~5)
+  Model cascade tracker tests (~7)
 ```
 
 ### Round 3 (verification)
@@ -298,7 +312,6 @@ assert.strictEqual(args[0].target, eventTarget);
 | `test_class_popupView.js` | TODO | Lane C (+ ~19 new tests) |
 | `test_class_gmailView.js` | TODO | Lane C (+ ~10 new tests) |
 | `test_class_observer.js` | TODO | Lane D (new -- ~18 tests) |
-| `test_class_orchestrator.js` | TODO | Lane D (new -- ~51 tests, after Wave 1 code) |
 
 ### Old Files (tests/) -- kept until migration verified
 All 11 Jest test files remain unchanged. Removed only after Round 3 verification.

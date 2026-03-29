@@ -51,27 +51,29 @@
 ### Parallelization Map
 
 ```
-WAVE 0 ─────────────────────────────────────────────────────────────────
+WAVE 0 (Baseline -- write missing tests BEFORE any code changes) ──────
   [A] Fix test infra          DONE (jsdom 24, V8 coverage, 505 passing)
   [B] Coverage instrumentation  (add source files to collectCoverageFrom)
-
-WAVE 1 (Foundation) ────────────────────────────────────────────────────
   ┌─────────────────────┐  ┌────────────────────────┐  ┌──────────────────────┐
-  │ [C] Orchestrator     │  │ [D] Trel versioning    │  │ [E] Observer tests   │
-  │     unit tests       │  │     tests              │  │     (new file)       │
-  │     (new file)       │  │     (augment existing) │  │                      │
-  │                      │  │                        │  │                      │
+  │ [E] Observer tests   │  │ [F] PopupForm          │  │ [G] PopupView        │
+  │     (new file)       │  │     deep tests         │  │     deep tests       │
+  │                      │  │     (augment)          │  │     (augment)        │
   │  CAN PARALLELIZE     │  │  CAN PARALLELIZE       │  │  CAN PARALLELIZE     │
   └─────────────────────┘  └────────────────────────┘  └──────────────────────┘
+  Write tests against CURRENT code. These become the baseline that proves
+  the targeted fixes don't break anything.
 
-WAVE 2 (Submit safety + cascade) ───────────────────────────────────────
-  ┌─────────────────────┐  ┌────────────────────────┐
-  │ [F] PopupForm       │  │ [G] PopupView          │
-  │     deep tests      │  │     deep tests         │
-  │     (augment)       │  │     (augment)          │
-  │                     │  │                        │
-  │  CAN PARALLELIZE    │  │  CAN PARALLELIZE       │
-  └─────────────────────┘  └────────────────────────┘
+WAVE 1 (Gmail.js -- branch, not main) ─────────────────────────────────
+  Gmail.js integration tests (see gmail-js-integration.md)
+
+WAVE 2 (Targeted race condition fixes) ─────────────────────────────────
+  ┌─────────────────────┐  ┌────────────────────────┐  ┌──────────────────────┐
+  │ [C] Trel version    │  │ [D] PopupForm submit   │  │ [D2] Model cascade   │
+  │     counter tests   │  │     guard tests         │  │      tracker tests   │
+  │     (augment)       │  │     (augment)           │  │      (augment)       │
+  │                     │  │                         │  │                      │
+  │  CAN PARALLELIZE    │  │  CAN PARALLELIZE        │  │  CAN PARALLELIZE     │
+  └─────────────────────┘  └─────────────────────────┘  └──────────────────────┘
 
 WAVE 3 (Add-to-card) ──────────────────────────────────────────────────
   ┌─────────────────────┐  ┌────────────────────────┐
@@ -82,10 +84,11 @@ WAVE 3 (Add-to-card) ───────────────────�
   │  CAN PARALLELIZE    │  │  CAN PARALLELIZE       │
   └─────────────────────┘  └────────────────────────┘
 
+WAVE 4: Ship prep (manual testing, CHANGES.md)
+
 DEPENDENCIES:
-  B → independent
-  C, D, E → independent of each other, depend on Wave 1 implementation code
-  F, G → independent of each other, depend on Wave 2 implementation code
+  B, E, F, G → independent (Wave 0 -- test current code)
+  C, D, D2 → independent of each other, depend on Wave 2 implementation code
   H, I → independent of each other, depend on Wave 3 implementation code
 ```
 
@@ -107,134 +110,61 @@ Add `collectCoverageFrom` to jest config so source file coverage is reported (cu
 
 ---
 
-### [C] New File: `test_class_orchestrator.js`
+### [C] Augment: `test_class_trel.js` -- Version Counter
 
-Tests for the coordination layer. Pure logic -- no DOM, no API, no jQuery. The most parallelizable test file because it has zero external dependencies.
-
-**Phase machine transitions** (~15 tests):
+Tests for the version counter that discards stale API responses (Fix 1 from orchestrator.md).
 
 ```
-describe('phase transitions')
-  it('starts in BOOT')
-  it('BOOT → LOADING_PERSIST on init')
-  it('LOADING_PERSIST → IDLE on classAppStateLoaded')
-  it('IDLE → LOADING_TRELLO on showPopup')
-  it('LOADING_TRELLO → LOADING_BOARD_DATA on trelloUserAndBoardsReady + boardChanged')
-  it('LOADING_BOARD_DATA → READY when all 3 parts complete')
-  it('READY → SUBMITTING on submit')
-  it('SUBMITTING → COMPLETE on cardCreationComplete')
-  it('SUBMITTING → READY on APIFail (allows retry)')
-  it('ANY → IDLE on navigation')
-  it('rejects invalid transitions (e.g. BOOT → SUBMITTING)')
-  it('LOADING_BOARD_DATA stays if only 1 of 3 parts complete')
-  it('LOADING_BOARD_DATA stays if only 2 of 3 parts complete')
-  it('rapid board switch: startBoardLoad resets pending set')
-  it('COMPLETE → READY on new form interaction')
-```
-
-**Request versioning** (~8 tests):
-
-```
-describe('request versioning')
-  it('nextVersion increments counter for category')
-  it('isCurrentVersion true for latest version')
-  it('isCurrentVersion false for stale version')
+describe('version counter')
+  it('_nextVersion increments counter for category')
+  it('_isCurrentVersion true for latest version')
+  it('_isCurrentVersion false for stale version')
   it('independent categories dont affect each other')
-  it('invalidateAllRequests makes all current versions stale')
-  it('nextVersion after invalidate starts fresh')
-  it('version 0 is never current (pre-init state)')
-  it('rapid calls: only last version is current')
-```
-
-**Hydration gates** (~8 tests):
-
-```
-describe('hydration gates')
-  it('tryHydrate does NOT fire when no gates set')
-  it('tryHydrate does NOT fire with only domReady')
-  it('tryHydrate does NOT fire with only persistReady')
-  it('tryHydrate does NOT fire with only gmailDataReady')
-  it('tryHydrate fires when all 3 gates true (dom, persist, gmail order)')
-  it('tryHydrate fires when all 3 gates true (gmail, dom, persist order)')
-  it('tryHydrate fires when all 3 gates true (persist, gmail, dom order)')
-  it('tryHydrate fires exactly once, not on subsequent gate sets')
-```
-
-**Submit guard** (~6 tests):
-
-```
-describe('submit guard')
-  it('canSubmit returns false in BOOT')
-  it('canSubmit returns false in LOADING_BOARD_DATA')
-  it('canSubmit returns false in SUBMITTING (double-submit blocked)')
-  it('canSubmit returns true in READY')
-  it('submit() transitions to SUBMITTING and returns true')
-  it('submit() in non-READY returns false and does not transition')
-```
-
-**Board load coordination** (~6 tests):
-
-```
-describe('board load coordination')
-  it('startBoardLoad clears stale temp arrays')
-  it('completeBoardLoadPart tracks individual completion')
-  it('onBoardLoadComplete fires when all 3 parts done')
-  it('onBoardLoadComplete does NOT fire when only 2 done')
-  it('rapid board switch: second startBoardLoad resets first')
-  it('completion of old board load parts after reset is ignored')
-```
-
-**Popup creation guard** (~4 tests):
-
-```
-describe('popup creation guard')
-  it('requestPopupCreation returns true first time')
-  it('requestPopupCreation returns false second time (deduplicated)')
-  it('handleForceRedraw resets guard, allows new creation')
-  it('handlePopupLoaded clears in-progress flag')
-```
-
-**Navigation** (~4 tests):
-
-```
-describe('navigation')
-  it('handleNavigation increments all request versions')
-  it('handleNavigation resets all gates')
-  it('handleNavigation sets phase to IDLE')
-  it('handleNavigation during SUBMITTING sets pendingNotification')
-```
-
-**Total: ~51 tests. Effort: 3-4 hours. Parallel: Yes.**
-
----
-
-### [D] Augment: `test_class_trel.js` -- Request Versioning
-
-Add tests for version-aware API responses. These test the Trel class changes, not the orchestrator itself.
-
-```
-describe('request versioning integration')
-  it('getLists passes version to success callback')
   it('getLists_success with current version updates temp.lists')
   it('getLists_success with stale version discards response')
-  it('getCards passes version to success callback')
   it('getCards_success with stale version discards response')
   it('getMembers_success with stale version discards response')
   it('getLabels_success with stale version discards response')
   it('rapid getLists: second call invalidates first response')
-
-describe('createCard payload verification')
-  it('createCard sends correct name from title field')
-  it('createCard sends correct name from subject field (fallback)')
-  it('createCard sends idLabels when provided')
-  it('createCard sends idMembers when provided')
-  it('createCard sends due when dueDate provided')
-  it('createCard sends pos:top when no card selected')
-  it('createCard sends pos:bottom for position=below')
-  it('createCard with cardPos sends numeric pos')
 ```
 
-**Total: ~16 tests. Effort: 2 hours. Parallel: Yes (with [C] and [E]).**
+**Total: ~10 tests. Effort: 1-2 hours. Parallel: Yes (with [D] and [D2]).**
+
+---
+
+### [D] Augment: `test_class_popupForm.js` -- Submit Guard
+
+Tests for the `_submitting` boolean that prevents double-submit (Fix 2 from orchestrator.md).
+
+```
+describe('submit guard')
+  it('handleSubmit sets _submitting to true')
+  it('second handleSubmit while _submitting is true does nothing')
+  it('_submitting resets to false on createCard_success')
+  it('_submitting resets to false on createCard_failure')
+  it('handleSubmit works again after success callback')
+```
+
+**Total: ~5 tests. Effort: 30 min. Parallel: Yes (with [C] and [D2]).**
+
+---
+
+### [D2] Augment: `test_class_model.js` -- Board Cascade Tracker
+
+Tests for the completion tracker that coordinates the board-change cascade (Fix 3 from orchestrator.md).
+
+```
+describe('board load coordination')
+  it('handleBoardChanged sets _boardLoadPending with 3 parts')
+  it('handleBoardChanged clears stale temp arrays')
+  it('_completeBoardLoadPart tracks individual completion')
+  it('_onBoardLoadComplete fires when all 3 parts done')
+  it('_onBoardLoadComplete does NOT fire when only 2 done')
+  it('rapid board switch: second handleBoardChanged resets tracking')
+  it('completion of old board load parts after switch is ignored')
+```
+
+**Total: ~7 tests. Effort: 1-2 hours. Parallel: Yes (with [C] and [D]).**
 
 ---
 
@@ -295,7 +225,7 @@ describe('handleSubmit data assembly')
   it('builds newCard with empty attachment array as default')
   it('builds newCard with attachment array from app.temp')
   it('passes newCard to model.submit')
-  it('respects orchestrator.canSubmit() returning false')
+  it('respects _submitting flag returning early')
 
 describe('updateLists')
   it('clears existing options')
@@ -350,7 +280,7 @@ describe('periodicChecks')
   it('calls validateButtonState')
   it('recreates button if missing from DOM')
   it('does NOT recreate if button exists')
-  it('respects orchestrator.requestPopupCreation() returning false')
+  it('does NOT recreate if button exists (no orchestrator guard needed -- gmail.js events are authoritative)')
 
 describe('dropdown change handlers')
   it('board change writes to app.persist.boardId')
@@ -488,12 +418,14 @@ The TODO.md has a plan to gut test_shared.js. After the wave work, evaluate:
 | Wave | After Completion | New Tests Added |
 |------|-----------------|-----------------|
 | Current | 505 tests, 11 files | -- |
-| Wave 0 [B] | 505 tests, source coverage visible | 0 |
-| Wave 1 [C+D+E] | ~590 tests, 13 files | ~85 |
-| Wave 2 [F+G] | ~643 tests, 13 files | ~53 |
-| Wave 3 [H+I] | ~669 tests, 13 files | ~26 |
-| parseData fixture tests | ~679 tests | ~10 |
-| **Total** | **~679 tests, 13 files** | **~174** |
+| Wave 0 [B+E+F+G] | ~590 tests, 12 files, source coverage visible | ~85 (baseline tests against current code) |
+| Wave 1 (Gmail.js) | ~600 tests | ~10 (gmail adapter tests) |
+| Wave 2 [C+D+D2] | ~622 tests | ~22 (version counter, submit guard, cascade tracker) |
+| Wave 3 [H+I] | ~648 tests | ~26 (add-to-card) |
+| parseData fixture tests | ~658 tests | ~10 |
+| **Total** | **~658 tests, 12 files** | **~153** |
+
+Note: 12 files not 13 -- no `test_class_orchestrator.js` needed.
 
 ---
 

@@ -3,7 +3,7 @@
 **Date**: 2026-03-29
 **Status**: Design / Pre-implementation
 **Depends on**: `swimlanes.md` (race condition analysis)
-**Blocks**: `orchestrator.md` (event model changes affect orchestrator design)
+**Blocks**: `orchestrator.md` (event model changes affect race condition fix design)
 **Purpose**: Replace the polling + MutationObserver approach with gmail.js event-driven detection, eliminating the 5-second `setInterval` and RACE-7.
 
 ---
@@ -111,7 +111,7 @@ class Gmail {
       this.bindEvents();
       this.ready = true;
     } else {
-      this.app.utils.log('Gmail.js not available, falling back to observer');
+      this.app.utils.log('Gmail.js not available');
     }
   }
 
@@ -177,7 +177,7 @@ G2T.Gmail = Gmail;
 | `views/class_popupView.js` | Remove `setInterval(periodicChecks, 5000)` | **High value** -- kills RACE-7 |
 | `views/class_popupView.js` | Add listener for `gmailViewChanged` → button validation | Medium |
 | `views/class_gmailView.js` | Optionally simplify `parseData()` to use gmail.js data API | Medium |
-| `class_observer.js` | Keep but make optional (fallback if gmail.js fails to load) | Low |
+| `class_observer.js` | DELETE entirely -- no fallback, no observer | **High value** -- simplifies codebase |
 | `content-script.js` | Remove `inject.js` injection, use gmail adapter for userEmail | Low |
 | `inject.js` | Can be removed entirely (gmail.js provides GLOBALS access) | Low |
 
@@ -292,20 +292,13 @@ handleGmailLoaded() {
 
 **What we lose**: The 5-second safety net. If gmail.js fails to fire an event, we don't catch it.
 
-**Mitigation**: Keep `class_observer.js` as a fallback. If gmail.js loads successfully, observer is optional. If gmail.js fails (CSP change, library error), observer + a conservative poll (30s instead of 5s) activates.
+**Decision**: No fallback. No observer, no polling. When gmail.js breaks (Gmail update), we update our vendored copy, same as we do for jQuery. This is the same maintenance model every gmail.js-based extension uses.
 
-```javascript
-// class_app.js init()
-this.gmail.init();
-if (this.gmail.ready) {
-  // Event-driven mode -- no polling needed
-  this.app.utils.log('Gmail.js active, event-driven mode');
-} else {
-  // Fallback -- observer + conservative poll
-  this.obs.observeToolbar();
-  this.popupView.startFallbackPolling(30000); // 30s, not 5s
-}
-```
+**Files deleted**:
+- `class_observer.js` -- MutationObserver wrapper, no longer needed
+- `inject.js` -- GLOBALS hack for user email, replaced by `gmail.get.user_email()`
+
+Remove `setInterval` from PopupView entirely. Remove `class_observer.js` from manifest.json content_scripts.
 
 ---
 
@@ -345,7 +338,7 @@ parseData() {
 }
 ```
 
-**Recommendation**: Keep DOM scraping as `parseDataFromDOM()`, add gmail.js path as primary. This way we have a fallback if gmail.js data format changes. Phase this in after the event system is working.
+**Recommendation**: Keep DOM scraping as `parseDataFromDOM()`, add gmail.js path as primary. If gmail.js data format changes, we update our vendored copy. Phase this in after the event system is working.
 
 ---
 
@@ -482,57 +475,50 @@ We already have this pattern working. Create a small loader script that runs in 
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Gmail.js breaks on Gmail update | Medium | High | Keep DOM scraping fallback, monitor gmail.js issues |
-| `world: "MAIN"` CSP blocked | Low | High | Fallback to observer + poll (existing code) |
-| gmail.js events fire late/miss | Low | Medium | Observer as backup for toolbar detection |
+| Gmail.js breaks on Gmail update | Medium | High | Update vendored copy, same as jQuery. Monitor gmail.js repo issues. |
+| `world: "MAIN"` CSP blocked | Low | High | No fallback. Would require emergency update to re-add observer. Acceptable risk -- CSP for chrome extensions is stable. |
+| gmail.js events fire late/miss | Low | Medium | No fallback. If events are unreliable, we update the vendored gmail.js. |
 | Library size (165KB) | N/A | Low | Users already load 250KB+ of jQuery + jQuery UI |
 | gmail.js API changes | Low | Medium | Adapter isolates our code from gmail.js API |
 
 ---
 
-## 11. Impact on Orchestrator Plan
+## 11. Impact on Race Condition Fixes
 
-With gmail.js, the orchestrator design changes:
+With gmail.js, RACE-7 (duplicate popupLoaded from periodicChecks) is **eliminated entirely**. There is no orchestrator class -- see `orchestrator.md` for the decision to use three targeted fixes instead.
 
-**Before (polling model)**:
-- Orchestrator must handle `popupLoaded` from periodicChecks (RACE-7)
-- Popup creation guard needed to deduplicate
+**Gmail.js eliminates**:
+- RACE-7: No more periodicChecks, no duplicate `popupLoaded` events
+- The popup creation guard that an orchestrator would have needed
 
-**After (event model)**:
-- `gmailLoaded` fires once → create button
-- `gmailViewChanged` fires on navigation → validate/recreate button
-- No deduplication needed -- events are authoritative
-- Orchestrator is simpler: fewer states, fewer race conditions to guard
-
-The hydration gate, request versioning, submit guard, and board-change cascade from the orchestrator plan are **unchanged** -- they address Trello API coordination, not Gmail detection.
+**Gmail.js does NOT affect** (these are fixed separately in Wave 2):
+- RACE-2/RACE-3: Stale API responses -- fixed by version counter in `class_trel.js`
+- RACE-5: Double submit -- fixed by submitting boolean in `class_popupForm.js`
+- Board-change cascade -- fixed by completion tracker in `class_model.js`
 
 ---
 
-## 12. Decision: Do This Before or After Orchestrator?
-
-**Before.** Reasons:
-
-1. The orchestrator's popup creation guard (Phase 5 in orchestrator.md) exists only because of `periodicChecks`. If we eliminate polling first, we can delete that entire section of the orchestrator.
-
-2. The orchestrator's navigation handler (`handleNavigation`) currently reacts to `hashchange`. With gmail.js, it reacts to `gmailViewChanged` -- a more reliable signal. Better to build the orchestrator around the real signal.
-
-3. The `--test-force-exit` workaround in tests exists because of `setInterval`. Removing the interval means tests exit cleanly without the flag.
-
-**Revised wave order**:
+## 12. Wave Order
 
 ```
-Wave 0.5: Gmail.js integration (this plan)
-  → Eliminate setInterval, inject.js
+Wave 0: Write all missing tests against current code (baseline)
+  → Establish coverage before changing anything
+  → See test-plan.md
+
+Wave 1: Gmail.js integration (this plan, on a branch, not main)
+  → Eliminate setInterval, class_observer.js, inject.js
   → Event-driven button management
+  → Delete class_observer.js and inject.js
 
-Wave 1: Orchestrator (simplified)
-  → Request versioning, hydration gates, submit guard
-  → NO popup creation guard needed (gmail.js events are authoritative)
-  → Board-change cascade coordination
+Wave 2: Targeted race condition fixes
+  → Version counter in class_trel.js (RACE-2, RACE-3)
+  → Submitting boolean in class_popupForm.js (RACE-5)
+  → Completion tracker in class_model.js (board-change cascade)
+  → No orchestrator class needed
 
-Wave 2: Add-to-card feature
+Wave 3: Add-to-card feature
 
-Wave 3: Ship prep
+Wave 4: Ship prep
 ```
 
 ---
@@ -544,5 +530,3 @@ Wave 3: Ship prep
 2. **Minified version?** Gmail.js doesn't ship a minified build. We'd either use it as-is or minify ourselves. At 165KB it's comparable to jQuery (87KB minified).
 
 3. **Phase 5 timing?** Simplifying `parseData()` to use gmail.js data API is nice-to-have. Can defer until after add-to-card ships. The event integration (Phases 1-4) is the priority.
-
-4. **Fallback behavior?** If gmail.js fails to load, should we silently fall back to observer + poll, or show a warning? Silent fallback is better UX but harder to debug.

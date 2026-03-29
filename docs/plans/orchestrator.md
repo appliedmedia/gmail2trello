@@ -1,9 +1,9 @@
-# Gmail-2-Trello: Orchestrator Plan
+# Gmail-2-Trello: Race Condition Fixes Plan
 
-**Date**: 2026-03-29
+**Date**: 2026-03-29 (updated)
 **Status**: Design / Pre-implementation
 **Depends on**: `swimlanes.md` (race condition analysis)
-**Purpose**: Introduce a coordination layer that eliminates the race conditions identified in the swimlane analysis, then safely implement the "add to card" feature on top of stable foundations.
+**Purpose**: Fix the race conditions identified in the swimlane analysis with three small, targeted changes -- no orchestrator class. Then safely implement the "add to card" feature on top of stable foundations.
 
 ---
 
@@ -26,151 +26,45 @@ And it makes **"add to card" dangerous** because a comment posted to the wrong c
 
 ---
 
-## 2. Design Goals
+## 2. Design Approach: No Orchestrator Class
 
-1. **Minimal intervention** -- don't rewrite the architecture. Add a thin coordination layer that the existing event bus flows through.
-2. **Backward compatible** -- existing event names and handlers stay. Orchestrator wraps, doesn't replace.
-3. **Testable** -- orchestrator state machine can be unit tested without DOM or API mocking.
-4. **Incremental** -- can be implemented in phases; each phase independently improves reliability.
+~~Originally this plan called for a new `class_orchestrator.js` with a full state machine, hydration gates, popup creation guards, and centralized coordination.~~
+
+**Decision: We will NOT build an orchestrator class.** The race conditions fall into two categories:
+
+### Category 1: Gmail Detection (RACE-7, duplicate popupLoaded)
+**Eliminated entirely by gmail.js.** Once gmail.js replaces the MutationObserver and setInterval polling (see `gmail-js-integration.md`), RACE-7 cannot occur. Gmail.js events are authoritative -- no deduplication needed.
+
+### Category 2: Trello API (RACE-2, RACE-3, RACE-5, board-change cascade)
+**Fixed with three small, targeted changes** in existing files. No new class needed.
+
+The three fixes total ~55 lines of new code across three existing files, versus ~200+ lines for an orchestrator class. The simpler approach is easier to test, easier to review, and doesn't change the architecture.
 
 ---
 
-## 3. Architecture: The Orchestrator
+## 3. The Three Targeted Fixes
 
-### 3.1 What It Is
+### Fix 1: Version Counter in class_trel.js (~20 lines) -- Fixes RACE-2, RACE-3
 
-A new class (`class_orchestrator.js`) that sits between the event bus and the side-effecting code. It:
+**Problem**: Old API responses overwrite newer data. No request ID or cancellation token.
 
-- Tracks **lifecycle phase** (a state machine)
-- Manages **request versioning** (discard stale API responses)
-- Enforces **precondition gates** (don't render until data is ready)
-- Provides **submit guard** (prevent double-submit)
-- Coordinates **cascade sequencing** (board → lists → cards)
-
-### 3.2 Where It Sits
-
-```
-BEFORE (current):
-  ┌─────────┐    emit     ┌──────────┐    emit     ┌──────────┐
-  │  Trel   │ ──────────► │ EventBus │ ──────────► │ PopupForm│
-  │ (API)   │             │          │             │ (UI)     │
-  └─────────┘             └──────────┘             └──────────┘
-       ▲                                                │
-       └────────── direct call ─────────────────────────┘
-
-AFTER (with orchestrator):
-  ┌─────────┐    emit     ┌──────────┐   forward    ┌──────────────┐  gated emit  ┌──────────┐
-  │  Trel   │ ──────────► │ EventBus │ ──────────► │ Orchestrator │ ──────────► │ PopupForm│
-  │ (API)   │             │          │             │              │             │ (UI)     │
-  └─────────┘             └──────────┘             │  - lifecycle │             └──────────┘
-       ▲                                           │  - versioning│                  │
-       └────────── coordinated call ───────────────│  - gates     │◄─────────────────┘
-                                                   │  - guards    │   submit request
-                                                   └──────────────┘
-```
-
-The orchestrator does NOT replace the event bus. It **intercepts specific events** where coordination is needed and forwards them only when safe.
-
-### 3.3 State Machine
-
-```
-                              ┌─────────────────────────────────────────────┐
-                              │                                             │
-                              ▼                                             │
-  ┌───────────┐    init()   ┌───────────┐  classAppState  ┌───────────┐   │
-  │           │ ──────────► │           │  Loaded +        │           │   │
-  │   BOOT    │             │  LOADING  │  popupLoaded     │   IDLE    │◄──┤
-  │           │             │  _PERSIST │ ─────────────► │           │   │
-  └───────────┘             └───────────┘                  └─────┬─────┘   │
-                                                                 │         │
-                                                    showPopup()  │         │
-                                                                 ▼         │
-                                                           ┌───────────┐   │
-                                                           │           │   │
-                                                           │  LOADING  │   │
-                                                           │  _TRELLO  │   │
-                                                           │           │   │
-                                                           └─────┬─────┘   │
-                                                                 │         │
-                                              trelloUserAnd      │         │
-                                              BoardsReady        │         │
-                                                                 ▼         │
-                                                           ┌───────────┐   │
-                                                           │           │   │
-                                                           │  LOADING  │   │
-                                                           │  _BOARD   │   │
-                                                           │  _DATA    │   │
-                                                           └─────┬─────┘   │
-                                                                 │         │
-                                              all 3 API calls    │         │
-                                              complete (lists,   │         │
-                                              labels, members)   │         │
-                                                                 ▼         │
-                                                           ┌───────────┐   │
-                                                           │           │   │
-                                                           │   READY   │   │
-                                                           │           │   │
-                                                           └─────┬─────┘   │
-                                                                 │         │
-                                                      submit()   │         │
-                                                                 ▼         │
-                                                           ┌───────────┐   │
-                                                           │           │   │
-                                                           │ SUBMITTING│   │
-                                                           │           │   │
-                                                           └─────┬─────┘   │
-                                                                 │         │
-                                              cardCreation       │         │
-                                              Complete           │         │
-                                                                 ▼         │
-                                                           ┌───────────┐   │
-                                                           │           │   │
-                                                           │ COMPLETE  │───┘
-                                                           │           │  hidePopup() or
-                                                           └───────────┘  new submit
-
-TRANSITIONS ON NAVIGATION:
-  ANY state ──hashchange──► IDLE (abort in-flight, reset)
-
-TRANSITIONS ON BOARD CHANGE:
-  READY ──boardChanged──► LOADING_BOARD_DATA (reset lists/cards/labels/members)
-
-TRANSITIONS ON ERROR:
-  SUBMITTING ──APIFail──► READY (show error, allow retry)
-  LOADING_* ──APIFail──► ERROR (show error, offer retry)
-```
-
-### 3.4 Request Versioning
-
-Each category of API request gets a monotonically increasing version counter. When a response arrives, it's only accepted if its version matches the current version for that category.
+**Fix**: Add a version counter per API category. Each request captures the current version. Success callbacks discard responses whose version doesn't match.
 
 ```javascript
-class Orchestrator {
-  constructor({ app }) {
-    this.app = app;
-    this.requestVersions = {
-      boards: 0,
-      lists: 0,
-      cards: 0,
-      labels: 0,
-      members: 0,
-    };
-  }
+// class_trel.js -- additions
 
-  // Called before making an API request
-  nextVersion(category) {
-    return ++this.requestVersions[category];
-  }
+// In constructor:
+this._requestVersions = { lists: 0, cards: 0, labels: 0, members: 0 };
 
-  // Called when API response arrives
-  isCurrentVersion(category, version) {
-    return this.requestVersions[category] === version;
-  }
+// New helper methods:
+_nextVersion(category) {
+  return ++this._requestVersions[category];
 }
-```
 
-**Usage in Trel**:
-```javascript
+_isCurrentVersion(category, version) {
+  return this._requestVersions[category] === version;
+}
+
 // BEFORE:
 getLists(boardId) {
   this.wrapApiCall('get', `boards/${boardId}/lists`, {},
@@ -185,14 +79,14 @@ getLists_success(data) {
 
 // AFTER:
 getLists(boardId) {
-  const version = this.app.orchestrator.nextVersion('lists');
+  const version = this._nextVersion('lists');
   this.wrapApiCall('get', `boards/${boardId}/lists`, {},
     (data) => this.getLists_success(data, version),
     this.getLists_failure.bind(this));
 }
 
 getLists_success(data, version) {
-  if (!this.app.orchestrator.isCurrentVersion('lists', version)) {
+  if (!this._isCurrentVersion('lists', version)) {
     this.app.utils.log('Discarding stale lists response');
     return;  // DISCARD
   }
@@ -201,294 +95,138 @@ getLists_success(data, version) {
 }
 ```
 
-This pattern fixes **RACE-2** and **RACE-3** with minimal code changes.
-
----
-
-## 4. Detailed Fix Plan Per Race Condition
-
-### Fix RACE-1: Hydration Precondition Failure
-
-**Problem**: `gmailDataReady` fires before `domReady` or `persistReady`, form never populates.
-
-**Fix**: Replace fire-and-forget with a deferred-event pattern in the orchestrator.
-
-```javascript
-class Orchestrator {
-  constructor({ app }) {
-    this.app = app;
-    this.gates = {
-      domReady: false,
-      persistReady: false,
-      gmailDataReady: false,
-    };
-    this.deferredGmailData = null;
-  }
-
-  setGate(name, value, data = null) {
-    this.gates[name] = value;
-    if (name === 'gmailDataReady' && data) {
-      this.deferredGmailData = data;
-    }
-    this.tryHydrate();
-  }
-
-  tryHydrate() {
-    if (this.gates.domReady && this.gates.persistReady && this.gates.gmailDataReady) {
-      this.app.popupView.form.hydrateGmail(this.deferredGmailData);
-      this.deferredGmailData = null;
-    }
-  }
-}
-```
-
-**Changes to existing code**:
-- `onDomReady()` → add `orchestrator.setGate('domReady', true)`
-- `onPersistReady()` → add `orchestrator.setGate('persistReady', true)`
-- `handleGmailDataReady()` → add `orchestrator.setGate('gmailDataReady', true, data)` instead of calling `maybeHydrateGmail()` directly
-
-**Impact**: Form ALWAYS populates once all three conditions are met, regardless of arrival order.
-
----
-
-### Fix RACE-2 & RACE-3: Stale API Responses
-
-**Problem**: Old API responses overwrite newer data.
-
-**Fix**: Request versioning (described in 3.4 above).
-
-**Files to change**:
-- `class_trel.js` -- pass version to success callbacks
-- `class_orchestrator.js` -- version counter management
+Same pattern applied to `getCards`, `getLabels`, `getMembers`.
 
 **Tests**:
-- Fire two getLists() calls, return second one first → verify first response is discarded
-- Fire getCards() for list A, switch to list B, return A's response → verify A's cards are discarded
+- Fire two getLists() calls, return second one first -- verify first response is discarded
+- Fire getCards() for list A, switch to list B, return A's response -- verify A's cards are discarded
+- Rapid calls: only the last version is current
 
 ---
 
-### Fix RACE-4: Submit Reads Inconsistent State
+### Fix 2: Submitting Boolean in class_popupForm.js (~5 lines) -- Fixes RACE-5
 
-**Problem**: Submit happens while data is mid-transition between board/list selections.
+**Problem**: No guard against clicking submit twice. Two cards created.
 
-**Fix**: The orchestrator state machine prevents submit unless in `READY` state.
+**Fix**: A simple boolean flag checked at the top of `handleSubmit()`.
 
 ```javascript
-canSubmit() {
-  return this.phase === 'READY';
-}
+// class_popupForm.js -- additions
 
-// In PopupForm:
+// In constructor:
+this._submitting = false;
+
+// In handleSubmit():
 handleSubmit() {
-  if (!this.app.orchestrator.canSubmit()) {
-    this.app.utils.log('Submit blocked: data still loading');
-    return;
-  }
-  // ... proceed with submit
+  if (this._submitting) return;  // Block double-submit
+  this._submitting = true;
+  // ... existing submit logic ...
 }
+
+// In handleCardCreationSuccess() / handleCardCreationFailure():
+this._submitting = false;  // Re-enable for retry or next card
 ```
 
-**UI feedback**: Disable submit button whenever phase !== READY. Re-enable when phase returns to READY.
-
-```javascript
-// In Orchestrator, on every phase transition:
-onPhaseChange(newPhase) {
-  const $submit = $('#addToTrello', this.app.popupView.$popup);
-  if (newPhase === 'READY') {
-    $submit.prop('disabled', false).css('opacity', 1);
-  } else {
-    $submit.prop('disabled', true).css('opacity', 0.5);
-  }
-}
-```
+**Tests**:
+- Call handleSubmit() twice rapidly -- verify only one createCard API call
+- After success callback, handleSubmit() works again
+- After failure callback, handleSubmit() works again (retry allowed)
 
 ---
 
-### Fix RACE-5: Double Submit
+### Fix 3: Completion Tracker in class_model.js (~30 lines) -- Fixes board-change cascade
 
-**Problem**: No guard against clicking submit twice.
+**Problem**: `boardChanged` fires three parallel API calls (lists, labels, members) with no coordination. `updateLists()` auto-selects a list, triggering `listChanged` -> `getCards()` before labels/members are loaded. Rapid board switches can interleave responses from different boards.
 
-**Fix**: Orchestrator phase transitions to `SUBMITTING` on first submit, rejects subsequent submits.
+**Fix**: Track completion of the three board-data API calls. Only update the UI when all three have returned for the current board.
 
 ```javascript
-submit(newCard) {
-  if (this.phase !== 'READY') return false;
-  this.setPhase('SUBMITTING');
-  this.app.model.submit(newCard);
-  return true;
+// class_model.js -- additions
+
+// In constructor:
+this._boardLoadPending = null;  // Set or null
+this._boardLoadId = null;       // boardId for current load
+
+// Replace handleBoardChanged:
+handleBoardChanged(target, params) {
+  const boardId = params.boardId;
+  this._boardLoadId = boardId;
+  this._boardLoadPending = new Set(['lists', 'labels', 'members']);
+
+  // Clear stale data
+  this.app.temp.lists = [];
+  this.app.temp.labels = [];
+  this.app.temp.members = [];
+  this.app.temp.cards = [];
+
+  this.loadTrelloLists(boardId);
+  this.loadTrelloLabels(boardId);
+  this.loadTrelloMembers(boardId);
 }
 
-// On success or failure:
-handleCardCreationComplete() {
-  this.setPhase('COMPLETE');
+_completeBoardLoadPart(part, boardId) {
+  // Ignore completions for a stale board
+  if (boardId !== this._boardLoadId) return;
+  if (!this._boardLoadPending) return;
+
+  this._boardLoadPending.delete(part);
+  if (this._boardLoadPending.size === 0) {
+    this._boardLoadPending = null;
+    this._onBoardLoadComplete();
+  }
 }
 
-handleAPIFail() {
-  this.setPhase('READY'); // Allow retry
+_onBoardLoadComplete() {
+  // NOW safe to update UI -- all three data sets are for the same board
+  this.app.events.emit('boardDataReady');
 }
 ```
+
+The existing success event listeners in PopupForm (`loadTrelloLists_success`, etc.) continue to store data in `app.temp` as before. The new `boardDataReady` event triggers the UI updates that were previously triggered individually.
+
+**Tests**:
+- All 3 parts complete for same board -- `boardDataReady` fires
+- Only 2 of 3 complete -- `boardDataReady` does NOT fire
+- Rapid board switch: old board's completions ignored, new board tracked fresh
+- `_onBoardLoadComplete` fires exactly once per board change
 
 ---
 
-### Fix RACE-6: Navigation Destroys Popup Mid-Operation
+## 4. Remaining Race Conditions (Accepted/Deferred)
 
-**Problem**: Gmail navigation during API calls destroys popup, orphans state.
+### RACE-1: Hydration Precondition Failure
+**Status**: Accepted risk. The existing `maybeHydrateGmail()` pattern works in practice because `classAppStateLoaded` fires fast (~5-50ms). If this becomes a real problem, a simple retry (call `maybeHydrateGmail()` from both `onDomReady` and `onPersistReady`) is a 2-line fix.
 
-**Fix**: On hashchange, orchestrator aborts in-flight work and resets cleanly.
+### RACE-4: Submit Reads Inconsistent State
+**Status**: Mitigated by Fix 3 (cascade tracker). Once `boardDataReady` fires, all data is consistent for the current board. The submit guard (Fix 2) prevents submit during the loading window if the user is fast enough to click before the cascade completes -- the UI should show a loading state during board changes anyway.
 
-```javascript
-handleNavigation() {
-  if (this.phase === 'SUBMITTING') {
-    // Card creation already sent to Trello -- can't cancel.
-    // But we can track that we need to notify user on next popup open.
-    this.pendingNotification = 'Card was submitted before navigation. Check Trello.';
-  }
+### RACE-6: Navigation Destroys Popup Mid-Operation
+**Status**: Accepted risk. jQuery silently handles operations on detached DOM. The card IS created, attachments ARE uploaded. The only symptom is missing success feedback. Low severity.
 
-  // Increment all request versions to invalidate in-flight API responses
-  Object.keys(this.requestVersions).forEach(k => this.requestVersions[k]++);
+### RACE-8: Chrome Storage Save Conflicts
+**Status**: Accepted risk. Low severity, requires exact timing + extension reload.
 
-  // Reset gates
-  this.gates = { domReady: false, persistReady: false, gmailDataReady: false };
-
-  this.setPhase('IDLE');
-}
-```
+### RACE-9: persistLoad vs Form Defaults
+**Status**: Accepted risk. Mitigated by `classAppStateLoaded` being fast.
 
 ---
 
-### Fix RACE-7: Duplicate popupLoaded
+## 5. Add-To-Card: Safe Implementation
 
-**Problem**: periodicChecks can fire `popupLoaded` while init/forceRedraw is in progress.
+With the targeted fixes in place, "add to card" can be implemented safely because:
 
-**Fix**: Orchestrator tracks whether popup creation is in progress and deduplicates.
+1. **Card dropdown is trustworthy** -- stale responses discarded (version counter)
+2. **Double-submit prevented** -- submitting boolean blocks re-entry
+3. **State is consistent** -- board data cascade ensures all data is for the same board
 
-```javascript
-class Orchestrator {
-  constructor() {
-    this.popupCreationInProgress = false;
-    this.popupCreated = false;
-  }
-
-  requestPopupCreation() {
-    if (this.popupCreationInProgress || this.popupCreated) return false;
-    this.popupCreationInProgress = true;
-    return true; // Proceed with creation
-  }
-
-  handlePopupLoaded() {
-    this.popupCreationInProgress = false;
-    this.popupCreated = true;
-  }
-
-  handleForceRedraw() {
-    this.popupCreated = false;
-    this.popupCreationInProgress = false;
-    // Now periodicChecks or detect() can recreate
-  }
-}
-```
-
-**Changes to existing code**:
-- `finalCreatePopup()` → check `orchestrator.requestPopupCreation()` first
-- `handlePopupLoaded()` → call `orchestrator.handlePopupLoaded()`
-- `forceRedraw()` → call `orchestrator.handleForceRedraw()`
-
----
-
-## 5. Cascade Coordinator: Board Change Flow
-
-The most complex flow is board change, which today fires three parallel API calls with no coordination and triggers a cascading list→cards load. The orchestrator replaces this with a tracked cascade.
-
-### 5.1 Current Flow (Uncoordinated)
-
-```
-boardChanged
-  ├─ getLists(boardId)    → callback → updateLists() → auto-select → listChanged → getCards()
-  ├─ getLabels(boardId)   → callback → updateLabels()
-  └─ getMembers(boardId)  → callback → updateMembers()
-```
-
-Problems:
-- `listChanged` fires from `updateLists()` before labels/members are loaded
-- getCards fires before lists are confirmed to be for the correct board
-- No "all done" signal
-
-### 5.2 Proposed Flow (Orchestrated)
-
-```
-boardChanged
-  │
-  ├─ orchestrator.setPhase('LOADING_BOARD_DATA')
-  ├─ orchestrator.resetBoardData()  // Clear stale temp arrays
-  │
-  ├─ getLists(boardId, version)    ─┐
-  ├─ getLabels(boardId, version)   ─┼─ PARALLEL (versioned)
-  └─ getMembers(boardId, version)  ─┘
-                                    │
-                    orchestrator.trackCompletion('lists' | 'labels' | 'members')
-                                    │
-                    when all 3 complete:
-                                    │
-                    ├─ orchestrator.setPhase('READY')
-                    ├─ updateLists()   ─── auto-select restores persisted listId
-                    ├─ updateLabels()
-                    ├─ updateMembers()
-                    └─ if (listId changed) → loadCards()  ─── SEQUENTIAL, after lists confirmed
-```
-
-### 5.3 Implementation: Completion Tracker
-
-```javascript
-class Orchestrator {
-  startBoardLoad(boardId) {
-    this.setPhase('LOADING_BOARD_DATA');
-    this.currentBoardId = boardId;
-    this.boardLoadPending = new Set(['lists', 'labels', 'members']);
-
-    // Clear stale data immediately
-    this.app.temp.lists = [];
-    this.app.temp.labels = [];
-    this.app.temp.members = [];
-    this.app.temp.cards = [];
-  }
-
-  completeBoardLoadPart(part) {
-    this.boardLoadPending.delete(part);
-    if (this.boardLoadPending.size === 0) {
-      this.onBoardLoadComplete();
-    }
-  }
-
-  onBoardLoadComplete() {
-    this.setPhase('READY');
-    // NOW safe to update UI and trigger cascading loads
-    this.app.popupView.form.updateLists();
-    this.app.popupView.form.updateLabels();
-    this.app.popupView.form.updateMembers();
-    // updateLists() will trigger listChanged → getCards only AFTER we're in READY phase
-  }
-}
-```
-
----
-
-## 6. Add-To-Card: Safe Implementation
-
-With the orchestrator in place, "add to card" can be implemented safely because:
-
-1. **Card dropdown is trustworthy** -- stale responses discarded (versioning)
-2. **Submit is gated** -- can only fire in READY phase when all data is loaded
-3. **Double-submit prevented** -- SUBMITTING phase blocks re-entry
-4. **State is consistent** -- boardId, listId, cardId all from same load cycle
-
-### 6.1 Add insertMode to State
+### 5.1 Add insertMode to State
 
 ```javascript
 // In app.temp (NOT persist -- mode should reset each session):
 this.temp.cardInsertMode = 'to'; // 'to' | 'after'
 ```
 
-### 6.2 Mode Switching (from AddToAfterRefactor.md)
+### 5.2 Mode Switching (from AddToAfterRefactor.md)
 
 Modifier key detection on card dropdown interaction:
 
@@ -502,12 +240,13 @@ $('#g2tCard', this.$popup).on('mousedown', (event) => {
 });
 ```
 
-### 6.3 Submit Flow with Mode
+### 5.3 Submit Flow with Mode
 
 ```javascript
 // In class_popupForm.js handleSubmit():
 handleSubmit() {
-  if (!this.app.orchestrator.canSubmit()) return;
+  if (this._submitting) return;
+  this._submitting = true;
 
   const mode = this.app.temp.cardInsertMode || 'to';
   const cardId = this.app.persist.cardId;
@@ -521,11 +260,11 @@ handleSubmit() {
     cardLabels: this.app.temp.cardLabels,
   };
 
-  this.app.orchestrator.submit(newCard);
+  this.parent.app.model.submit(newCard);
 }
 ```
 
-### 6.4 Trel: Branching on Mode
+### 5.4 Trel: Branching on Mode
 
 ```javascript
 // In class_trel.js:
@@ -599,84 +338,66 @@ createNewCard(cardData) {
 }
 ```
 
-### 6.5 Remove Position Dropdown
+### 5.5 Remove Position Dropdown
 
 The `g2tPosition` dropdown (`below:` / `to:`) becomes dead UI once mode is controlled by modifier keys:
 
 ```
 FILES TO UPDATE:
-  - views/popupView.html     → remove <select id="g2tPosition">
-  - views/class_popupView.js → remove g2tPosition change handler (lines 859-862)
-  - views/class_popupView.js → update g2tList next-select to "combo_g2tCard"
-  - views/class_popupForm.js → remove g2tPosition reset (line 1138)
-  - style.css                → remove #g2tPosition rules
+  - views/popupView.html     -> remove <select id="g2tPosition">
+  - views/class_popupView.js -> remove g2tPosition change handler (lines 859-862)
+  - views/class_popupView.js -> update g2tList next-select to "combo_g2tCard"
+  - views/class_popupForm.js -> remove g2tPosition reset (line 1138)
+  - style.css                -> remove #g2tPosition rules
 ```
 
 ---
 
-## 7. Implementation Phases
+## 6. Implementation Phases
 
-### Phase 0: Prep (est. 1-2 hours)
-- [ ] Create `chrome_manifest_v3/class_orchestrator.js`
-- [ ] Add to `manifest.json` content_scripts (before `class_app.js`)
-- [ ] Instantiate in `class_app.js` constructor: `this.orchestrator = new G2T.Orchestrator({ app: this })`
-- [ ] Add `G2T.Orchestrator = Orchestrator;` namespace export
-- [ ] Write skeleton with phase enum and transition method
+### Wave 0: Write Missing Tests (baseline)
+- [ ] Write tests against current code to establish a baseline
+- [ ] Cover the code paths that will be modified by the targeted fixes
+- [ ] See `test-plan.md` for details
 
-### Phase 1: Request Versioning (est. 2-3 hours) -- Fixes RACE-2, RACE-3
-- [ ] Add `requestVersions` map to orchestrator
-- [ ] Update `class_trel.js` getLists/getCards/getLabels/getMembers to pass version
-- [ ] Update success callbacks to check `isCurrentVersion()` before accepting
-- [ ] Write unit tests: stale response discarded, current response accepted
+### Wave 1: Gmail.js Integration (branch, not main)
+- [ ] See `gmail-js-integration.md`
+- [ ] Eliminates RACE-7 (duplicate popupLoaded) entirely
+- [ ] Eliminates setInterval, inject.js, class_observer.js
 
-### Phase 2: Hydration Gate (est. 1-2 hours) -- Fixes RACE-1
-- [ ] Add `gates` and `deferredGmailData` to orchestrator
-- [ ] Update `onDomReady()`, `onPersistReady()`, `handleGmailDataReady()` to call `setGate()`
-- [ ] Implement `tryHydrate()` deferred execution
-- [ ] Write unit tests: late domReady, late persistReady, late gmailData all work
+### Wave 2: Targeted Race Condition Fixes
+- [ ] **Fix 1**: Version counter in `class_trel.js` (~20 lines, 2 hours)
+  - Add `_requestVersions` map and helper methods
+  - Update getLists/getCards/getLabels/getMembers to pass version
+  - Update success callbacks to check version before accepting
+- [ ] **Fix 2**: Submitting boolean in `class_popupForm.js` (~5 lines, 30 min)
+  - Add `_submitting` flag
+  - Check at top of `handleSubmit()`
+  - Reset on success/failure
+- [ ] **Fix 3**: Completion tracker in `class_model.js` (~30 lines, 2 hours)
+  - Add `_boardLoadPending` Set and `_boardLoadId`
+  - Track completion of lists/labels/members
+  - Emit `boardDataReady` when all three complete
+  - Ignore completions from stale board loads
 
-### Phase 3: Submit Guard & Phase Machine (est. 2-3 hours) -- Fixes RACE-4, RACE-5
-- [ ] Implement full phase state machine in orchestrator
-- [ ] Wire phase transitions to existing events
-- [ ] Add `canSubmit()` check in `handleSubmit()`
-- [ ] Add submit button disable/enable on phase change
-- [ ] Write unit tests: submit blocked in LOADING, allowed in READY, blocked in SUBMITTING
-
-### Phase 4: Board Change Cascade (est. 2-3 hours) -- Improves RACE-2, RACE-4
-- [ ] Implement `startBoardLoad()` / `completeBoardLoadPart()` / `onBoardLoadComplete()`
-- [ ] Update `model.handleBoardChanged()` to use orchestrator
-- [ ] Defer `updateLists()` / `updateLabels()` / `updateMembers()` until all three complete
-- [ ] Ensure `listChanged` → `getCards()` only fires after board load complete
-- [ ] Write unit tests: rapid board switch, partial completion, full completion
-
-### Phase 5: Navigation Safety (est. 1-2 hours) -- Fixes RACE-6, RACE-7
-- [ ] Implement `handleNavigation()` -- increment all versions, reset gates, set IDLE
-- [ ] Implement popup creation deduplication
-- [ ] Wire `hashchange` → `orchestrator.handleNavigation()`
-- [ ] Wire `finalCreatePopup()` → `orchestrator.requestPopupCreation()`
-- [ ] Add `pendingNotification` display on next popup open
-- [ ] Write unit tests: navigation during submit, navigation during load
-
-### Phase 6: Add-To-Card Feature (est. 3-4 hours) -- The actual feature
+### Wave 3: Add-to-Card Feature (3-4 hours)
 - [ ] Add `cardInsertMode` to `app.temp`
 - [ ] Add modifier key detection on card dropdown
-- [ ] Add visual indicator (Unicode first: `→▯` for TO, `▯⤵` for AFTER)
+- [ ] Add visual indicator (Unicode first: `->` for TO, `v` for AFTER)
 - [ ] Implement `addToExistingCard()` and `updateCardExtras()` in `class_trel.js`
 - [ ] Update `createCard()` to branch on mode
-- [ ] Update `handleSubmit()` to include mode and cardId in submission data
+- [ ] Update `handleSubmit()` to include mode and cardId
 - [ ] Remove `g2tPosition` dropdown from HTML, CSS, and JS handlers
-- [ ] Write unit tests: TO mode posts comment, AFTER mode creates card with position
+- [ ] Write unit tests
 
-### Phase 7: Polish & Manual Testing (est. 2-3 hours)
+### Wave 4: Ship Prep (2-3 hours)
 - [ ] Version bump in manifest.json
 - [ ] Update CHANGES.md
 - [ ] Manual test matrix:
   - [ ] First open -- form populates correctly
   - [ ] Rapid board switching -- no stale data
   - [ ] Rapid list switching -- no stale cards
-  - [ ] Submit during load -- blocked
   - [ ] Double submit -- blocked
-  - [ ] Navigate during submit -- notification shown
   - [ ] Add TO existing card -- comment added
   - [ ] Add AFTER card -- new card positioned correctly
   - [ ] New card at top -- works regardless of mode
@@ -686,280 +407,96 @@ FILES TO UPDATE:
 
 ---
 
-## 8. Orchestrator Class Skeleton
+## 7. File Manifest
 
-```javascript
-class Orchestrator {
-  // --- Lifecycle Phases ---
-  static PHASES = {
-    BOOT: 'BOOT',
-    LOADING_PERSIST: 'LOADING_PERSIST',
-    IDLE: 'IDLE',
-    LOADING_TRELLO: 'LOADING_TRELLO',
-    LOADING_BOARD_DATA: 'LOADING_BOARD_DATA',
-    READY: 'READY',
-    SUBMITTING: 'SUBMITTING',
-    COMPLETE: 'COMPLETE',
-    ERROR: 'ERROR',
-  };
+| File | Action | Wave |
+|------|--------|------|
+| `chrome_manifest_v3/class_trel.js` | EDIT (version counter, add-to-card) | 2, 3 |
+| `chrome_manifest_v3/views/class_popupForm.js` | EDIT (submitting guard, mode) | 2, 3 |
+| `chrome_manifest_v3/class_model.js` | EDIT (board cascade tracker) | 2 |
+| `chrome_manifest_v3/views/class_popupView.js` | EDIT (modifier key detection) | 3 |
+| `chrome_manifest_v3/views/popupView.html` | EDIT (remove g2tPosition) | 3 |
+| `chrome_manifest_v3/style.css` | EDIT (remove g2tPosition, add mode indicator) | 3 |
+| `chrome_manifest_v3/class_observer.js` | DELETE | 1 |
+| `chrome_manifest_v3/inject.js` | DELETE | 1 |
+| `docs/CHANGES.md` | EDIT | 4 |
 
-  constructor({ app }) {
-    this.app = app;
-    this.phase = Orchestrator.PHASES.BOOT;
-
-    // --- Request versioning ---
-    this.requestVersions = { boards: 0, lists: 0, cards: 0, labels: 0, members: 0 };
-
-    // --- Hydration gates ---
-    this.gates = { domReady: false, persistReady: false, gmailDataReady: false };
-    this.deferredGmailData = null;
-
-    // --- Board load tracking ---
-    this.currentBoardId = null;
-    this.boardLoadPending = new Set();
-
-    // --- Popup creation guard ---
-    this.popupCreationInProgress = false;
-    this.popupCreated = false;
-
-    // --- Navigation notification ---
-    this.pendingNotification = null;
-  }
-
-  // --- Phase transitions ---
-  setPhase(newPhase) {
-    const oldPhase = this.phase;
-    this.phase = newPhase;
-    this.app.utils.log(`Orchestrator: ${oldPhase} → ${newPhase}`);
-    this.onPhaseChange(newPhase, oldPhase);
-  }
-
-  onPhaseChange(newPhase, oldPhase) {
-    // Update submit button state
-    const $submit = $('#addToTrello', this.app.popupView?.$popup);
-    if ($submit.length) {
-      const enabled = newPhase === Orchestrator.PHASES.READY;
-      $submit.prop('disabled', !enabled);
-    }
-  }
-
-  // --- Request versioning ---
-  nextVersion(category) {
-    return ++this.requestVersions[category];
-  }
-
-  isCurrentVersion(category, version) {
-    return this.requestVersions[category] === version;
-  }
-
-  invalidateAllRequests() {
-    Object.keys(this.requestVersions).forEach(k => this.requestVersions[k]++);
-  }
-
-  // --- Hydration gates ---
-  setGate(name, value, data = null) {
-    this.gates[name] = value;
-    if (name === 'gmailDataReady' && data) {
-      this.deferredGmailData = data;
-    }
-    this.tryHydrate();
-  }
-
-  tryHydrate() {
-    if (this.gates.domReady && this.gates.persistReady && this.gates.gmailDataReady) {
-      this.app.popupView.form.hydrateGmail(this.deferredGmailData);
-      this.deferredGmailData = null;
-    }
-  }
-
-  // --- Board load coordination ---
-  startBoardLoad(boardId) {
-    this.setPhase(Orchestrator.PHASES.LOADING_BOARD_DATA);
-    this.currentBoardId = boardId;
-    this.boardLoadPending = new Set(['lists', 'labels', 'members']);
-    // Clear stale data
-    this.app.temp.lists = [];
-    this.app.temp.labels = [];
-    this.app.temp.members = [];
-    this.app.temp.cards = [];
-  }
-
-  completeBoardLoadPart(part) {
-    this.boardLoadPending.delete(part);
-    if (this.boardLoadPending.size === 0) {
-      this.onBoardLoadComplete();
-    }
-  }
-
-  onBoardLoadComplete() {
-    this.setPhase(Orchestrator.PHASES.READY);
-    this.app.popupView.form.updateLists();
-    this.app.popupView.form.updateLabels();
-    this.app.popupView.form.updateMembers();
-  }
-
-  // --- Submit guard ---
-  canSubmit() {
-    return this.phase === Orchestrator.PHASES.READY;
-  }
-
-  submit(newCard) {
-    if (!this.canSubmit()) {
-      this.app.utils.log('Orchestrator: submit blocked, phase=' + this.phase);
-      return false;
-    }
-    this.setPhase(Orchestrator.PHASES.SUBMITTING);
-    this.app.model.submit(newCard);
-    return true;
-  }
-
-  handleCardCreationComplete() {
-    this.setPhase(Orchestrator.PHASES.COMPLETE);
-  }
-
-  handleAPIFail() {
-    this.setPhase(Orchestrator.PHASES.READY);
-  }
-
-  // --- Popup creation guard ---
-  requestPopupCreation() {
-    if (this.popupCreationInProgress || this.popupCreated) return false;
-    this.popupCreationInProgress = true;
-    return true;
-  }
-
-  handlePopupLoaded() {
-    this.popupCreationInProgress = false;
-    this.popupCreated = true;
-  }
-
-  handleForceRedraw() {
-    this.popupCreated = false;
-    this.popupCreationInProgress = false;
-  }
-
-  // --- Navigation ---
-  handleNavigation() {
-    if (this.phase === Orchestrator.PHASES.SUBMITTING) {
-      this.pendingNotification = 'A card submission was in progress. Please check Trello.';
-    }
-    this.invalidateAllRequests();
-    this.gates = { domReady: false, persistReady: false, gmailDataReady: false };
-    this.deferredGmailData = null;
-    this.popupCreated = false;
-    this.popupCreationInProgress = false;
-    this.setPhase(Orchestrator.PHASES.IDLE);
-  }
-}
-```
+**NOT created**: `class_orchestrator.js` -- see Section 2 for rationale.
 
 ---
 
-## 9. Testing Strategy
+## 8. Testing Strategy
 
-### Unit Tests (class_orchestrator.test.js)
-
-Test the state machine and guards in isolation, no DOM or API needed:
+### Version Counter Tests (augment test_class_trel.js)
 
 ```
-Phase Transitions:
-  - BOOT → LOADING_PERSIST on init
-  - LOADING_PERSIST → IDLE on classAppStateLoaded
-  - IDLE → LOADING_TRELLO on showPopup
-  - LOADING_TRELLO → LOADING_BOARD_DATA on trelloUserAndBoardsReady
-  - LOADING_BOARD_DATA → READY when all 3 parts complete
-  - READY → SUBMITTING on submit
-  - SUBMITTING → COMPLETE on cardCreationComplete
-  - SUBMITTING → READY on APIFail (retry)
-  - ANY → IDLE on navigation
+describe('request versioning')
+  it('_nextVersion increments counter for category')
+  it('_isCurrentVersion true for latest version')
+  it('_isCurrentVersion false for stale version')
+  it('independent categories dont affect each other')
+  it('getLists_success with current version updates temp.lists')
+  it('getLists_success with stale version discards response')
+  it('getCards_success with stale version discards response')
+  it('rapid getLists: second call invalidates first response')
+```
 
-Request Versioning:
-  - nextVersion increments
-  - isCurrentVersion returns true for latest, false for stale
-  - invalidateAllRequests makes all current versions stale
+### Submit Guard Tests (augment test_class_popupForm.js)
 
-Submit Guard:
-  - canSubmit() true only in READY
-  - submit() transitions to SUBMITTING
-  - submit() returns false in non-READY phases
+```
+describe('submit guard')
+  it('handleSubmit sets _submitting to true')
+  it('second handleSubmit while _submitting is true does nothing')
+  it('_submitting resets to false on createCard_success')
+  it('_submitting resets to false on createCard_failure')
+  it('handleSubmit works again after success callback')
+```
 
-Hydration Gates:
-  - tryHydrate fires when all 3 gates true
-  - tryHydrate does NOT fire when any gate false
-  - Order of gate setting doesn't matter (all 6 permutations)
+### Board Cascade Tests (augment test_class_model.js)
 
-Board Load Coordination:
-  - startBoardLoad clears stale data
-  - completeBoardLoadPart tracks completion
-  - onBoardLoadComplete fires only when all 3 parts done
-  - Rapid board switch: startBoardLoad resets pending set
-
-Popup Guard:
-  - requestPopupCreation returns true first time, false second time
-  - handleForceRedraw resets guard
+```
+describe('board load coordination')
+  it('handleBoardChanged sets _boardLoadPending with 3 parts')
+  it('handleBoardChanged clears stale temp arrays')
+  it('_completeBoardLoadPart tracks individual completion')
+  it('_onBoardLoadComplete fires when all 3 parts done')
+  it('_onBoardLoadComplete does NOT fire when only 2 done')
+  it('rapid board switch: second handleBoardChanged resets tracking')
+  it('completion of old board load parts after switch is ignored')
 ```
 
 ### Integration Tests
-
-Test orchestrator wired into the event system (mock Trel API responses):
 
 ```
 Rapid Board Switch:
   - emit boardChanged(A), then boardChanged(B) before A's API returns
   - Verify: A's responses discarded, B's responses accepted, UI shows B's data
 
-Submit During Load:
-  - emit boardChanged, then emit submit before load completes
-  - Verify: submit blocked, submit button disabled
-
 Double Submit:
-  - emit submit twice rapidly
+  - call handleSubmit() twice rapidly
   - Verify: only one createCard API call made
-
-Navigation During Submit:
-  - emit submit, then hashchange before createCard returns
-  - Verify: pendingNotification set, phase reset to IDLE
 ```
 
 ---
 
-## 10. File Manifest
-
-| File | Action | Phase |
-|------|--------|-------|
-| `chrome_manifest_v3/class_orchestrator.js` | CREATE | 0 |
-| `chrome_manifest_v3/manifest.json` | EDIT (add to content_scripts, bump version) | 0, 7 |
-| `chrome_manifest_v3/class_app.js` | EDIT (instantiate orchestrator) | 0 |
-| `chrome_manifest_v3/class_trel.js` | EDIT (request versioning, add-to-card) | 1, 6 |
-| `chrome_manifest_v3/views/class_popupForm.js` | EDIT (gates, submit guard, mode) | 2, 3, 6 |
-| `chrome_manifest_v3/views/class_popupView.js` | EDIT (gates, popup guard, modifier key) | 2, 5, 6 |
-| `chrome_manifest_v3/class_model.js` | EDIT (board cascade, submit routing) | 4, 6 |
-| `chrome_manifest_v3/views/popupView.html` | EDIT (remove g2tPosition) | 6 |
-| `chrome_manifest_v3/style.css` | EDIT (remove g2tPosition, add mode indicator) | 6 |
-| `tests/test_class_orchestrator.js` | CREATE | 1-6 |
-| `docs/CHANGES.md` | EDIT | 7 |
-
----
-
-## 11. Risk Assessment
+## 9. Risk Assessment
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Orchestrator adds latency to UI updates | Low | Low | All orchestrator logic is synchronous JS; no async added |
-| Phase machine blocks legitimate submit | Medium | Medium | Thorough testing of all phase transitions; READY is the default post-load state |
-| Request versioning discards valid response (edge case) | Low | Low | Version is per-category, not global; only same-category requests conflict |
-| Existing tests break | Medium | Low | Orchestrator is additive; existing code paths still work, just gated |
-| Board cascade coordination changes timing of updateLists | Medium | Medium | Test that persisted listId is correctly restored after batched update |
+| Version counter discards valid response (edge case) | Low | Low | Version is per-category; only same-category requests conflict |
+| Submit guard stuck in submitting state | Low | Medium | Reset on both success AND failure callbacks |
+| Cascade tracker stuck waiting | Low | Medium | If any API call fails, the failure handler should clear the tracker |
+| Existing tests break | Low | Low | Changes are additive -- existing code paths still work, just guarded |
 
 ---
 
-## 12. Decision Log
+## 10. Decision Log
 
 | Decision | Rationale | Alternative Considered |
 |----------|-----------|----------------------|
-| Separate orchestrator class (not inline) | Testable, single responsibility, doesn't bloat existing classes | Inline guards in each class -- rejected: spreads coordination logic everywhere |
+| **No orchestrator class** | Three targeted fixes (~55 lines total) are simpler, easier to test, and sufficient | Full orchestrator with state machine (~200+ lines) -- rejected: over-engineered for the actual problems |
 | Request versioning (not AbortController) | Trello.js uses jQuery.ajax internally, no native fetch; version check is simpler | AbortController -- rejected: would require replacing Trello.js internals |
-| Synchronous phase machine (not async) | All transitions are triggered by event callbacks which are already sync | Promise-based state machine -- rejected: adds complexity, existing system is callback-based |
-| Deferred hydration (not retry timer) | Deterministic: fires exactly when conditions met | setInterval retry -- rejected: wasteful polling, harder to reason about |
-| Unicode mode indicators first (not PNG) | Ship faster, upgrade later | PNG icons -- deferred to post-launch polish |
-| Keep EventTarget as-is | Orchestrator intercepts at call sites, not at event bus level | Replace EventTarget with orchestrated bus -- rejected: too invasive |
+| Submitting boolean (not state machine) | 5 lines vs 50+. A boolean is the right tool for a binary state | Phase-based state machine -- rejected: only need to know "am I submitting?" |
+| Cascade tracker in Model (not new class) | Model already owns the board-change handler; adding tracking there is natural | Orchestrator class -- rejected: see above |
+| **No TypeScript** | Project has no build step; JSDoc annotations added as files are touched | TypeScript -- rejected: requires build tooling changes |
+| Keep EventTarget as-is | The event bus works fine; the problems are in the handlers, not the bus | Replace EventTarget with orchestrated bus -- rejected: too invasive |

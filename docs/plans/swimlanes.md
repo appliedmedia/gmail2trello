@@ -604,12 +604,11 @@ The missing "add to existing card" functionality (documented in `AddToAfterRefac
 
 ## 6. Recommendations
 
-These feed into the orchestrator plan (`orchestrator.md`):
+These feed into the race condition fixes plan (`orchestrator.md`):
 
-1. **Add a request versioning/cancellation system** to discard stale API responses.
-2. **Add a state machine** to track popup lifecycle phases (loading → ready → submitting → complete).
-3. **Gate submit** behind all-data-loaded checks, not just UI presence.
-4. **Replay deferred events** when preconditions are met (replace fire-and-forget with queuing).
-5. **Tag API responses** with the boardId/listId they were requested for, so stale ones can be discarded.
-6. **Disable submit button** during submission and during data loading transitions.
-7. **Coordinate boardChanged cascade** so cards don't load until lists are confirmed for the correct board.
+1. **Version counter in class_trel.js** (~20 lines) -- discard stale API responses. Each API category (lists, cards, labels, members) gets a monotonically increasing version. Success callbacks check the version before accepting data. Fixes RACE-2 and RACE-3.
+2. **Submitting boolean in class_popupForm.js** (~5 lines) -- block double-submit. A `_submitting` flag checked at the top of `handleSubmit()`, reset on success/failure. Fixes RACE-5.
+3. **Completion tracker in class_model.js** (~30 lines) -- coordinate the board-change cascade. Track completion of the three parallel API calls (lists, labels, members). Only emit `boardDataReady` when all three have returned for the current board. Fixes the uncoordinated cascade that amplifies RACE-2 and RACE-4.
+4. **Gmail.js replaces observer + polling entirely** -- eliminates RACE-7 (duplicate popupLoaded) and the 5-second blind spot. See `gmail-js-integration.md`.
+
+No orchestrator class or state machine is needed. These four changes (~55 lines of new code across three existing files, plus the gmail.js integration) address all high-severity race conditions with minimal architectural change.
