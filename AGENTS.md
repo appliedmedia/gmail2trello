@@ -20,11 +20,11 @@ This document serves as the agent instructions for the Gmail-2-Trello public rep
 
 Before working on this codebase, please read these essential documents:
 
-### 📚 [DEPLOYMENT.md](DEPLOYMENT.md)
+### 📚 [Deployment](docs/2025-06-30_info_Deployment.md)
 
 Complete deployment guide for the Gmail-2-Trello extension. Covers Chrome Web Store submission, version management, and release procedures.
 
-### 🔧 [DEVELOPMENT.md](DEVELOPMENT.md)
+### 🔧 [Development](docs/2025-06-30_info_Development.md)
 
 Development setup, coding standards, and workflow guidelines. Essential for understanding the codebase structure and development practices.
 
