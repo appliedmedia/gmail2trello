@@ -2,29 +2,36 @@
 // Bridges gmail.js events to content script via CustomEvent
 (function () {
   const waitForGmail = setInterval(() => {
-    if (typeof Gmail !== 'undefined') {
+    if (typeof Gmail !== 'undefined' && typeof jQuery !== 'undefined') {
       clearInterval(waitForGmail);
-      const gmail = new Gmail();
+      try {
+        const gmail = new Gmail(jQuery);
 
-      const emit = (type, data = {}) => {
-        document.dispatchEvent(
-          new CustomEvent('g2t_gmail_event', {
-            detail: { type, ...data },
+        const emit = (type, data = {}) => {
+          document.dispatchEvent(
+            new CustomEvent('g2t_gmail_event', {
+              detail: { type, ...data },
+            }),
+          );
+        };
+
+        // Wait for Gmail to fully load before emitting ready
+        // (user_email and GLOBALS are not available until the load event)
+        gmail.observe.on('load', () => {
+          emit('ready', { userEmail: gmail.get.user_email() });
+          emit('load');
+        });
+
+        gmail.observe.on('view_email', () =>
+          emit('view_email', {
+            page: gmail.get.current_page(),
+            subject: gmail.get.email_subject(),
           }),
         );
-      };
-
-      gmail.observe.on('load', () => emit('load'));
-      gmail.observe.on('view_email', () =>
-        emit('view_email', {
-          page: gmail.get.current_page(),
-          subject: gmail.get.email_subject(),
-        }),
-      );
-      gmail.observe.on('open_email', () => emit('open_email'));
-
-      // Signal ready with user email (replaces inject.js GLOBALS hack)
-      emit('ready', { userEmail: gmail.get.user_email() });
+        gmail.observe.on('open_email', () => emit('open_email'));
+      } catch (_e) {
+        // Gmail.js failed to initialize -- will be detected by content script timeout
+      }
     }
   }, 100);
 

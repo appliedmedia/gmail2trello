@@ -133,7 +133,7 @@ Feature: PopupView Class
     When handleGmailViewChanged is called on the popupView
     Then validateButtonState was called
 
-  Scenario: handleGmailLoaded calls handleDetectButton
+  Scenario: handleGmailLoaded triggers button creation when toolbar is detected
     Given popup DOM with no button
     And the popupView gmailView preDetect returns true with toolbar
     When handleGmailLoaded is called on the popupView

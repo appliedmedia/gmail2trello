@@ -55,6 +55,7 @@
         "https://mail.google.com/*"
       ],
       "js": [
+        "lib/jquery-3.7.1.min.js",
         "lib/gmail.min.js",
         "gmail_loader.js"
       ],

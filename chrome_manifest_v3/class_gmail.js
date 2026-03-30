@@ -24,10 +24,14 @@ class Gmail {
   }
 
   init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
     this.app.utils.log('Gmail:init');
-    document.addEventListener('g2t_gmail_event', event => {
+    this._gmailEventHandler = event => {
       this.handleGmailEvent(event);
-    });
+    };
+    document.addEventListener('g2t_gmail_event', this._gmailEventHandler);
   }
 
   handleGmailEvent(event) {
@@ -43,6 +47,7 @@ class Gmail {
           this.app.model.userEmail = detail.userEmail;
         }
         this.app.utils.log('Gmail: ready event, userEmail=' + detail.userEmail);
+        // Intentionally emits even when userEmail is undefined -- downstream handlers check for it
         this.app.events.emit('gmailReady', { userEmail: detail.userEmail });
         break;
 

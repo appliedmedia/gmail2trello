@@ -29,6 +29,11 @@ Feature: Gmail Class
     When init is called on the gmail adapter
     Then a g2t_gmail_event listener is registered on document
 
+  Scenario: init called twice does not duplicate listeners
+    When init is called on the gmail adapter
+    And init is called on the gmail adapter
+    Then a g2t_gmail_event listener is registered on document
+
   # --------------------------------------------------------------------------
   # handleGmailEvent -- ready
   # --------------------------------------------------------------------------

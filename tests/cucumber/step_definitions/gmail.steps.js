@@ -55,6 +55,12 @@ Given('a fresh Gmail adapter', function () {
 When('init is called on the gmail adapter', function () {
   try {
     this.instance.init();
+    // Store cleanup reference for After hook
+    this._gmailEventCleanup = () => {
+      if (this.instance._gmailEventHandler) {
+        sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
+      }
+    };
     this.error = null;
   } catch (e) {
     this.error = e;
@@ -64,6 +70,15 @@ When('init is called on the gmail adapter', function () {
 When('a g2t_gmail_event is dispatched with type {string} and userEmail {string}', function (type, userEmail) {
   // init the adapter so it listens
   this.instance.init();
+  // Store cleanup reference for After hook
+  this._gmailEventCleanup = () => {
+    if (this.instance._gmailEventHandler) {
+      sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
+    }
+  };
+
+  // Reset mock calls before the action so we only check fresh emits
+  this.app.events.emit.mock.resetCalls();
 
   const event = new sharedWindow.CustomEvent('g2t_gmail_event', {
     detail: { type, userEmail },
@@ -74,6 +89,15 @@ When('a g2t_gmail_event is dispatched with type {string} and userEmail {string}'
 When('a g2t_gmail_event is dispatched with type {string}', function (type) {
   // init the adapter so it listens
   this.instance.init();
+  // Store cleanup reference for After hook
+  this._gmailEventCleanup = () => {
+    if (this.instance._gmailEventHandler) {
+      sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
+    }
+  };
+
+  // Reset mock calls before the action so we only check fresh emits
+  this.app.events.emit.mock.resetCalls();
 
   const event = new sharedWindow.CustomEvent('g2t_gmail_event', {
     detail: { type },
@@ -84,6 +108,15 @@ When('a g2t_gmail_event is dispatched with type {string}', function (type) {
 When('a g2t_gmail_event is dispatched with type {string} and page {string} and subject {string}', function (type, page, subject) {
   // init the adapter so it listens
   this.instance.init();
+  // Store cleanup reference for After hook
+  this._gmailEventCleanup = () => {
+    if (this.instance._gmailEventHandler) {
+      sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
+    }
+  };
+
+  // Reset mock calls before the action so we only check fresh emits
+  this.app.events.emit.mock.resetCalls();
 
   const event = new sharedWindow.CustomEvent('g2t_gmail_event', {
     detail: { type, page, subject },
@@ -114,6 +147,9 @@ When('handleGmailEvent is called with empty detail', function () {
 // ---------------------------------------------------------------------------
 
 Then('a g2t_gmail_event listener is registered on document', function () {
+  // Reset mock calls so we only see fresh emits from this dispatch
+  this.app.events.emit.mock.resetCalls();
+
   // We can verify by dispatching an event and checking that handleGmailEvent processes it
   const event = new sharedWindow.CustomEvent('g2t_gmail_event', {
     detail: { type: 'load' },
@@ -121,7 +157,12 @@ Then('a g2t_gmail_event listener is registered on document', function () {
   sharedDocument.dispatchEvent(event);
   // If init worked, emit should have been called with gmailLoaded
   const calls = this.app.events.emit.mock.calls;
-  const found = calls.some(c => [...c.arguments][0] === 'gmailLoaded');
+  const found = calls.some(c => {
+    const arg = c.arguments[0];
+    if (typeof arg === 'string' && arg === 'gmailLoaded') return true;
+    if (typeof arg === 'object' && arg.type === 'gmailLoaded') return true;
+    return false;
+  });
   assert.ok(found, 'Expected gmailLoaded event after dispatching g2t_gmail_event with type "load"');
 });
 
@@ -139,7 +180,13 @@ Then('app.events.emit was called with event {string}', function (eventName) {
 Then('app.events.emit has not been called for gmail events', function () {
   const calls = this.app.events.emit.mock.calls;
   const gmailEvents = ['gmailReady', 'gmailLoaded', 'gmailViewChanged'];
-  const found = calls.some(c => gmailEvents.includes(c.arguments[0]));
+  const found = calls.some(c => {
+    const arg = c.arguments[0];
+    // Check both string form and object form
+    if (typeof arg === 'string') return gmailEvents.includes(arg);
+    if (typeof arg === 'object' && arg !== null) return gmailEvents.includes(arg.type);
+    return false;
+  });
   assert.ok(!found, 'Expected no gmail events emitted');
 });
 

@@ -58,7 +58,6 @@ class App {
 
     // Temporary state (not saved to storage)
     this.temp = {
-      lastHash: '',
       log: {
         memory: [],
         count: 0,

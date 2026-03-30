@@ -44,12 +44,6 @@ function createRealApp(world) {
   win.setInterval = origSI;
   win.setTimeout = origST;
 
-  // Clear any interval leaked from PopupView
-  if (app.popupView && app.popupView.intervalId) {
-    clearInterval(app.popupView.intervalId);
-    app.popupView.intervalId = 0;
-  }
-
   // Stub bindData/bindGmailData if missing (they may live on PopupForm)
   if (typeof app.popupView.bindData !== 'function') {
     app.popupView.bindData = createMockFn();

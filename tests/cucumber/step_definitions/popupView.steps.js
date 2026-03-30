@@ -281,6 +281,10 @@ When('handleGmailViewChanged is called on the popupView', function () {
   } catch (e) {
     this.error = e;
   }
+  if (this._savedHTML !== undefined) {
+    sharedDocument.body.innerHTML = this._savedHTML;
+    this._savedHTML = undefined;
+  }
 });
 
 When('handleGmailLoaded is called on the popupView', function () {

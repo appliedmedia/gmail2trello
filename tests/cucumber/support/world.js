@@ -241,7 +241,6 @@ function createApp() {
     gmail: {
       init: createMockFn(),
       ready: false,
-      getUserEmail: createMockFn(() => 'test@gmail.com'),
     },
 
     trel: {
@@ -268,7 +267,6 @@ function createApp() {
     },
 
     temp: {
-      lastHash: '',
       updatesPending: [],
       comboInitialized: false,
       pendingMessage: null,

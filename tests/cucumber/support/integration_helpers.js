@@ -2,7 +2,7 @@
  * Integration test helpers for Gmail-2-Trello
  *
  * These helpers create a REAL G2T.App with all real classes wired together,
- * mocking only external boundaries (Chrome APIs, Trello REST, MutationObserver).
+ * mocking only external boundaries (Chrome APIs, Trello REST).
  */
 
 const {
