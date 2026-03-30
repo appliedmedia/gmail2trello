@@ -1,8 +1,11 @@
 # Proxy Badge to SVG
 #
 # Lightweight trigger deployed to each client repo.
-# Extracts license name from LICENSE file and passes it
-# to the centralized handler in appliedmedia/internal.
+# Extracts badge values from the local repo and passes them
+# as a JSON blob to the centralized handler in appliedmedia/internal.
+#
+# Adding new badge values only requires updating this proxy —
+# the handler reads whatever keys are in the JSON blob.
 #
 # Deployed to: {repo}/.github/workflows/action-proxy-badge2svg.yml
 
@@ -16,40 +19,45 @@ jobs:
   extract:
     runs-on: ubuntu-latest
     outputs:
-      license_name: ${{ steps.license.outputs.name }}
+      badge_data: ${{ steps.collect.outputs.badge_data }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Extract license name
-        id: license
+      - name: Collect badge data
+        id: collect
         run: |
-          if [ ! -f LICENSE ]; then
-            echo "name=Unknown" >> $GITHUB_OUTPUT
-            exit 0
+          # Extract license name
+          LICENSE_NAME="Unknown"
+          if [ -f LICENSE ]; then
+            LICENSE_LINE=$(grep -i "license" LICENSE | head -1)
+            if [ -n "$LICENSE_LINE" ]; then
+              LICENSE_NAME=$(echo "$LICENSE_LINE" | \
+                sed -E 's/^[[:space:]]*(#|\/\/|\/\*|<!--|--|;|REM)[[:space:]]*//' | \
+                sed -E 's/^.*[Ll]icense:[[:space:]]*//' | \
+                sed -E 's/[[:space:]]*(\*\/|-->)[[:space:]]*$//' | \
+                sed 's/"//g' | \
+                xargs)
+              LICENSE_NAME="${LICENSE_NAME:-Unknown}"
+            fi
           fi
 
-          LICENSE_LINE=$(grep -i "license" LICENSE | head -1)
-          if [ -z "$LICENSE_LINE" ]; then
-            echo "name=Unknown" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+          # Build JSON blob with all badge values
+          # Add new keys here as needed — handler reads whatever is present
+          BADGE_DATA=$(jq -n \
+            --arg license_name "$LICENSE_NAME" \
+            --arg target_repo "$GITHUB_REPOSITORY" \
+            '{
+              license_name: $license_name,
+              target_repo: $target_repo
+            }')
 
-          # Strip comment markers and "License:" prefix
-          LICENSE_NAME=$(echo "$LICENSE_LINE" | \
-            sed -E 's/^[[:space:]]*(#|\/\/|\/\*|<!--|--|;|REM)[[:space:]]*//' | \
-            sed -E 's/^.*[Ll]icense:[[:space:]]*//' | \
-            sed -E 's/[[:space:]]*(\*\/|-->)[[:space:]]*$//' | \
-            sed 's/"//g' | \
-            xargs)
-
-          echo "name=${LICENSE_NAME:-Unknown}" >> $GITHUB_OUTPUT
+          echo "badge_data=$BADGE_DATA" >> $GITHUB_OUTPUT
 
   badge:
     needs: extract
     uses: appliedmedia/internal/.github/workflows/action-handler-badge2svg.yml@main
     with:
-      license_name: ${{ needs.extract.outputs.license_name }}
-      target_repo: ${{ github.repository }}
+      badge_data: ${{ needs.extract.outputs.badge_data }}
     secrets:
       cross_repo_token: ${{ secrets.APPLIEDMEDIA_CROSS_REPO_TOKEN }}
