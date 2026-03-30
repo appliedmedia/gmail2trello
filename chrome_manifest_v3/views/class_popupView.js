@@ -56,8 +56,6 @@ class PopupView {
 
     this.lastError = '';
 
-    this.intervalId = 0;
-
     this.EVENT_LISTENER = '.g2t_event_listener'; // NOTE (acoven@2020-05-23): beginning with dot intentional and required
 
     this.CLEAR_EXT_BROWSING_DATA = 'g2t_clear_extension_browsing_data';
@@ -272,6 +270,16 @@ class PopupView {
       this.handleBeforeLoadTrello.bind(this),
     );
     // PopupForm now handles the final assembly when data is ready
+
+    // Gmail.js event-driven button management (replaces setInterval polling)
+    this.app.events.addListener(
+      'gmailViewChanged',
+      this.handleGmailViewChanged.bind(this),
+    );
+    this.app.events.addListener(
+      'gmailLoaded',
+      this.handleGmailLoaded.bind(this),
+    );
   }
 
   bindPopupEvents() {
@@ -911,15 +919,17 @@ class PopupView {
 
     // inject a button & a popup
     // this.finalCreatePopup(); // Moved to handleDetectButton for now
+  }
 
-    // Set up periodic checks interval (includes button detection)
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
+  handleGmailViewChanged() {
+    this.validateButtonState();
+    if (!this.$toolBar || !document.contains(this.$toolBar[0])) {
+      this.handleDetectButton();
     }
+  }
 
-    this.intervalId = setInterval(() => {
-      this.periodicChecks();
-    }, 5000); // Check every 5 seconds for button state
+  handleGmailLoaded() {
+    this.handleDetectButton();
   }
 }
 

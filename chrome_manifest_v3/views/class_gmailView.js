@@ -622,10 +622,6 @@ class GmailView {
       'trelloUserAndBoardsReady',
       this.handleTrelloUserAndBoardsReady.bind(this),
     );
-    this.app.events.addListener(
-      'toolbarChanged',
-      this.handleToolbarChanged.bind(this),
-    );
   }
 
   handleTrelloUserAndBoardsReady() {
@@ -640,20 +636,10 @@ class GmailView {
     this.app.events.emit('gmailDataReady', { gmail: this.app.model.gmail });
   }
 
-  /**
-   * Handle toolbar changed event from Observer
-   */
-  handleToolbarChanged() {
-    this.app.utils.log('GmailView: Toolbar changed event received');
-    this.forceRedraw();
-  }
-
   init() {
     this.bindEvents();
     // Start detection
     this.detect();
-    // Set up MutationObserver for instant toolbar change detection
-    this.app.obs.observeToolbar();
   }
 }
 
