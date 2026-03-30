@@ -1,9 +1,10 @@
 # Proxy Badge to SVG
 #
-# Lightweight trigger that calls the centralized badge2svg handler
-# in appliedmedia/internal on push to main.
+# Lightweight trigger deployed to each client repo.
+# Extracts license name from LICENSE file and passes it
+# to the centralized handler in appliedmedia/internal.
 #
-# Deployed to each client repo's .github/workflows/action-proxy-badge2svg.yml
+# Deployed to: {repo}/.github/workflows/action-proxy-badge2svg.yml
 
 name: Proxy Badge to SVG
 
@@ -11,9 +12,44 @@ name: Proxy Badge to SVG
   push:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
+  extract:
+    runs-on: ubuntu-latest
+    outputs:
+      license_name: ${{ steps.license.outputs.name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Extract license name
+        id: license
+        run: |
+          if [ ! -f LICENSE ]; then
+            echo "name=Unknown" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          LICENSE_LINE=$(grep -i "license" LICENSE | head -1)
+          if [ -z "$LICENSE_LINE" ]; then
+            echo "name=Unknown" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Strip comment markers and "License:" prefix
+          LICENSE_NAME=$(echo "$LICENSE_LINE" | \
+            sed -E 's/^[[:space:]]*(#|\/\/|\/\*|<!--|--|;|REM)[[:space:]]*//' | \
+            sed -E 's/^.*[Ll]icense:[[:space:]]*//' | \
+            sed -E 's/[[:space:]]*(\*\/|-->)[[:space:]]*$//' | \
+            sed 's/"//g' | \
+            xargs)
+
+          echo "name=${LICENSE_NAME:-Unknown}" >> $GITHUB_OUTPUT
+
   badge:
-    uses: appliedmedia/internal/.github/workflows/action-handler-badge2svg.yml@857a3c4146705ddca03ef9b66af399d7374c8542
+    needs: extract
+    uses: appliedmedia/internal/.github/workflows/action-handler-badge2svg.yml@main
+    with:
+      license_name: ${{ needs.extract.outputs.license_name }}
+      target_repo: ${{ github.repository }}
+    secrets:
+      cross_repo_token: ${{ secrets.APPLIEDMEDIA_CROSS_REPO_TOKEN }}
