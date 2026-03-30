@@ -11,7 +11,7 @@ const CLASS_FILE_MAP = {
   Goog: 'chrome_manifest_v3/class_goog.js',
   Trel: 'chrome_manifest_v3/class_trel.js',
   Model: 'chrome_manifest_v3/class_model.js',
-  Observer: 'chrome_manifest_v3/class_observer.js',
+  Gmail: 'chrome_manifest_v3/class_gmail.js',
   WaitCounter: 'chrome_manifest_v3/class_waitCounter.js',
   MenuControl: 'chrome_manifest_v3/class_menuControl.js',
   Utils: 'chrome_manifest_v3/class_utils.js',
@@ -27,7 +27,7 @@ const CLASS_DEPS = {
   GmailView: ['WaitCounter'],
   PopupView: ['PopupForm', 'MenuControl'],
   App: [
-    'EventTarget', 'Goog', 'Trel', 'Model', 'Observer',
+    'EventTarget', 'Goog', 'Trel', 'Model', 'Gmail',
     'WaitCounter', 'GmailView', 'PopupForm', 'MenuControl', 'PopupView', 'Utils',
   ],
 };

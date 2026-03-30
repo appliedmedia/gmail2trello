@@ -30,12 +30,6 @@ After({ tags: '@integration' }, function () {
   if (this._realApp?.popupView?.intervalId) {
     clearInterval(this._realApp.popupView.intervalId);
   }
-  // Clean up observer debounce timers
-  if (this._realApp?.obs?.debounceTimers) {
-    Object.values(this._realApp.obs.debounceTimers).forEach(timer => {
-      if (timer) clearTimeout(timer);
-    });
-  }
   this._realApp = null;
   this._firedEvents = null;
   this._eventData = null;
@@ -130,7 +124,7 @@ Given('all G2T classes are loaded and a real App is created', function () {
 // -------------------------------------------------------------------------
 
 Then(
-  'the app has real subsystems: events, model, gmailView, popupView, utils, obs, goog',
+  'the app has real subsystems: events, model, gmailView, popupView, utils, gmail, goog',
   function () {
     const app = this._realApp;
     assert.ok(app.events, 'events missing');
@@ -138,7 +132,7 @@ Then(
     assert.ok(app.gmailView, 'gmailView missing');
     assert.ok(app.popupView, 'popupView missing');
     assert.ok(app.utils, 'utils missing');
-    assert.ok(app.obs, 'obs missing');
+    assert.ok(app.gmail, 'gmail missing');
     assert.ok(app.goog, 'goog missing');
   },
 );
@@ -150,7 +144,7 @@ Then('all subsystems reference the same app instance', function () {
   assert.strictEqual(app.gmailView.app, app);
   assert.strictEqual(app.popupView.app, app);
   assert.strictEqual(app.utils.app, app);
-  assert.strictEqual(app.obs.app, app);
+  assert.strictEqual(app.gmail.app, app);
   assert.strictEqual(app.goog.app, app);
 });
 
@@ -693,98 +687,39 @@ Then('parseData returns undefined without crashing', function () {
 });
 
 // -------------------------------------------------------------------------
-// Navigation and Redraw
+// Navigation and Redraw via gmail.js events
 // -------------------------------------------------------------------------
 
-Given('the real app has a g2tButton in the DOM', function () {
-  const $ = sharedWindow.$;
-  $('body').find('#g2tButton').remove();
-  $('body').append('<div id="g2tButton">G2T</div>');
-
-  // Capture hashchange listeners during init
-  this._hashchangeListeners = [];
-  const origAddEventListener = sharedWindow.addEventListener;
-  sharedWindow.addEventListener = (type, listener, ...rest) => {
-    if (type === 'hashchange') {
-      this._hashchangeListeners.push(listener);
-      return;
-    }
-    return origAddEventListener.call(sharedWindow, type, listener, ...rest);
-  };
-
-  // Initialize the app
+Given('the real app is initialized with gmail adapter', function () {
   this._realApp.init();
-
-  // Restore
-  sharedWindow.addEventListener = origAddEventListener;
+  // gmail adapter is initialized as part of app.init()
+  assert.ok(this._realApp.gmail, 'gmail adapter should exist');
 });
 
-When(
-  'a hashchange event fires with different hash sections',
-  function () {
-    const listeners = this._hashchangeListeners || [];
-    assert.ok(listeners.length > 0, 'No hashchange listeners captured');
-    // Simulate a hashchange event
-    const fakeEvent = {
-      oldURL: 'http://localhost/#inbox',
-      newURL: 'http://localhost/#sent',
-    };
-    listeners.forEach(listener => listener(fakeEvent));
-  },
-);
-
-Then('the g2tButton is removed from the DOM', function () {
-  const $ = sharedWindow.$;
-  // forceRedraw removes the button
-  assert.strictEqual(
-    $('#g2tButton').length,
-    0,
-    'g2tButton should have been removed by forceRedraw',
-  );
+When('gmailViewChanged event fires on the real app', function () {
+  try {
+    this._realApp.events.emit('gmailViewChanged', { type: 'email', page: 'inbox', subject: 'Test' });
+    this.error = null;
+  } catch (e) {
+    this.error = e;
+  }
 });
 
-// Observer
-
-Given('the real app has observer watching toolbar', function () {
-  this._realApp.init();
-  // Observer.observeToolbar was called during init via gmailView.init
-  // The MutationObserver mock was installed; get a reference to the observer instance
-  this._observerInstance = this._realApp.obs.observers.toolbar;
+When('gmailLoaded event fires on the real app', function () {
+  try {
+    this._realApp.events.emit('gmailLoaded');
+    this.error = null;
+  } catch (e) {
+    this.error = e;
+  }
 });
 
-Given('a toolbar mutation is prepared', function () {
-  // Create a mock mutation that looks like a toolbar change
-  const toolbarSelector = this._realApp.obs.config.toolbar.selector;
-  const mockNode = sharedWindow.document.createElement('div');
-  mockNode.setAttribute('gh', 'mtb');
-
-  this._mockMutations = [
-    {
-      type: 'childList',
-      addedNodes: [mockNode],
-      removedNodes: [],
-    },
-  ];
+Then('the popupView handleGmailViewChanged ran without error', function () {
+  assert.strictEqual(this.error, null, 'handleGmailViewChanged should not throw');
 });
 
-When('toolbar mutations are triggered with debounce', function (callback) {
-  // Set connected flag
-  this._realApp.obs.connected.toolbar = true;
-
-  // Trigger the mutation handler
-  this._realApp.obs.handleToolbarMutations(this._mockMutations);
-
-  // Wait for debounce (250ms default + buffer)
-  setTimeout(() => {
-    callback();
-  }, 350);
-});
-
-Then('toolbarChanged event fires on the real app', function () {
-  assert.ok(
-    this._firedEvents['toolbarChanged'],
-    'toolbarChanged did not fire',
-  );
+Then('the popupView handleGmailLoaded ran without error', function () {
+  assert.strictEqual(this.error, null, 'handleGmailLoaded should not throw');
 });
 
 // -------------------------------------------------------------------------

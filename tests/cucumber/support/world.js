@@ -238,9 +238,10 @@ function createApp() {
       forceRedraw: createMockFn(),
     },
 
-    obs: {
+    gmail: {
       init: createMockFn(),
-      observeToolbar: createMockFn(),
+      ready: false,
+      getUserEmail: createMockFn(() => 'test@gmail.com'),
     },
 
     trel: {

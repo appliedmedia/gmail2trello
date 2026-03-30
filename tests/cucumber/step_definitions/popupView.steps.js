@@ -274,6 +274,28 @@ When('periodicChecks is called on the popupView', function () {
   }
 });
 
+When('handleGmailViewChanged is called on the popupView', function () {
+  try {
+    this.instance.handleGmailViewChanged();
+    this.error = null;
+  } catch (e) {
+    this.error = e;
+  }
+});
+
+When('handleGmailLoaded is called on the popupView', function () {
+  try {
+    this.instance.handleGmailLoaded();
+    this.error = null;
+  } catch (e) {
+    this.error = e;
+  }
+  if (this._savedHTML !== undefined) {
+    sharedDocument.body.innerHTML = this._savedHTML;
+    this._savedHTML = undefined;
+  }
+});
+
 Then('validateButtonState was called', function () {
   assert.ok(this._validateCalled, 'validateButtonState should have been called');
 });

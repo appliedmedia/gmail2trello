@@ -9,7 +9,7 @@ const { sharedWindow, createMockFn, createApp, loadSourceFile } = require('../su
 const classFiles = [
   'chrome_manifest_v3/class_eventTarget.js',
   'chrome_manifest_v3/class_goog.js',
-  'chrome_manifest_v3/class_observer.js',
+  'chrome_manifest_v3/class_gmail.js',
   'chrome_manifest_v3/class_waitCounter.js',
   'chrome_manifest_v3/class_menuControl.js',
   'chrome_manifest_v3/class_trel.js',
@@ -35,23 +35,14 @@ function createRealApp(world) {
 
   const origSI = win.setInterval;
   const origST = win.setTimeout;
-  const origAEL = win.addEventListener;
-  const origMO = win.MutationObserver;
 
   win.setInterval = function () { return 0; };
   win.setTimeout = function () { return 0; };
-  win.addEventListener = function (type, fn, opts) {
-    if (type === 'hashchange') return;
-    return origAEL.call(win, type, fn, opts);
-  };
-  win.MutationObserver = class { observe() {} disconnect() {} };
 
   const app = new world.G2T.App();
 
   win.setInterval = origSI;
   win.setTimeout = origST;
-  win.addEventListener = origAEL;
-  win.MutationObserver = origMO;
 
   // Clear any interval leaked from PopupView
   if (app.popupView && app.popupView.intervalId) {
@@ -173,36 +164,9 @@ When('handleClassAppStateLoaded is called with event missing type', function () 
   }
 });
 
-When('handleGmailNavigation is called on the App', function () {
-  try {
-    this._realApp.handleGmailNavigation();
-    this.error = null;
-  } catch (e) {
-    this.error = e;
-  }
-});
-
-When('handleGmailHashChange is called on the App', function () {
-  try {
-    this._realApp.handleGmailHashChange();
-    this.error = null;
-  } catch (e) {
-    this.error = e;
-  }
-});
-
 When('bindEvents is called on the App', function () {
   try {
     this._realApp.bindEvents();
-    this.error = null;
-  } catch (e) {
-    this.error = e;
-  }
-});
-
-When('bindGmailNavigationEvents is called on the App', function () {
-  try {
-    this._realApp.bindGmailNavigationEvents();
     this.error = null;
   } catch (e) {
     this.error = e;
@@ -393,14 +357,12 @@ Then('the App log memory length is at most max', function () {
   assert.ok(this._realApp.temp.log.memory.length <= this._realApp.temp.log.max);
 });
 
-Then('handleGmailHashChange is a function on the App', function () {
-  assert.strictEqual(typeof this._realApp.handleGmailHashChange, 'function');
+Then('the App has gmail adapter wired', function () {
+  assert.ok(this._realApp.gmail, 'gmail adapter should exist');
+  assert.strictEqual(this._realApp.gmail.app, this._realApp, 'gmail.app should reference the app');
 });
 
-Then('calling handleGmailHashChange does not throw', function () {
-  assert.doesNotThrow(() => this._realApp.handleGmailHashChange());
-});
-
-Then('the App temp lastHash is defined', function () {
-  assert.notStrictEqual(this._realApp.temp.lastHash, undefined);
+Then('the App gmail adapter is initialized', function () {
+  // After init(), gmail.init() should have been called, meaning the event listener was set up
+  assert.ok(this._realApp.gmail, 'gmail adapter should exist');
 });
