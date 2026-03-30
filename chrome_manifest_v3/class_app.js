@@ -24,7 +24,7 @@ class App {
     this.trelloApiKey = '21b411b1b5b549c54bd32f0e90738b41'; // Was: "c50413b23ee49ca49a5c75ccf32d0459"
     this.goog = new G2T.Goog({ app: this });
     this.events = new G2T.EventTarget({ app: this });
-    this.obs = new G2T.Observer({ app: this });
+    this.gmail = new G2T.Gmail({ app: this });
     this.model = new G2T.Model({ app: this });
     this.gmailView = new G2T.GmailView({ app: this });
     this.popupView = new G2T.PopupView({ app: this });
@@ -58,7 +58,6 @@ class App {
 
     // Temporary state (not saved to storage)
     this.temp = {
-      lastHash: '',
       log: {
         memory: [],
         count: 0,
@@ -83,9 +82,6 @@ class App {
 
     // App initialization flag (local, not persisted)
     this.initialized = false;
-
-    // Initialize navigation detection
-    this.temp.lastHash = window.location.hash;
   }
 
   persistLoad() {
@@ -118,20 +114,6 @@ class App {
     }
   }
 
-  // Handle Gmail navigation changes
-  handleGmailNavigation() {
-    this.utils.log('App: Gmail navigation detected, triggering redraw');
-    // Force a complete redraw to ensure the button appears in the new view
-    this.gmailView.forceRedraw();
-    // Also emit the force redraw event for the popup view
-    this.events.emit('forceRedraw');
-  }
-
-  handleGmailHashChange() {
-    this.utils.log('App: Gmail view change detected via hashchange');
-    this.gmailView.forceRedraw();
-  }
-
   // Event binding
   bindEvents() {
     this.events.addListener(
@@ -140,34 +122,15 @@ class App {
     );
   }
 
-  // Bind Gmail navigation events
-  bindGmailNavigationEvents() {
-    // Listen for URL hash changes (Gmail's primary navigation method)
-    window.addEventListener('hashchange', event => {
-      const oldHash = (event?.oldURL || '').match(/#([^/]+)/)?.[1] || '';
-      const newHash = (event?.newURL || '').match(/#([^/]+)/)?.[1] || '';
-
-      // Only trigger redraw if this is a view change (not just content change)
-      if (oldHash !== newHash) {
-        this.handleGmailHashChange();
-      }
-
-      this.temp.lastHash = newHash;
-    });
-  }
-
   init() {
     // this.utils.log('App:initialize');
     this.bindEvents();
-    this.obs.init();
+    this.gmail.init();
     this.model.init();
     this.gmailView.init();
     this.popupView.init();
     this.utils.init();
     this.persistLoad();
-
-    // Bind Gmail navigation events to detect view changes
-    this.bindGmailNavigationEvents();
 
     // Google Analytics tracking (only if analytics is available)
     if (typeof analytics !== 'undefined') {

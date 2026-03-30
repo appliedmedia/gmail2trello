@@ -89,16 +89,9 @@ Feature: App Class
     When handleClassAppStateLoaded is called with event missing type
     Then no error is thrown
 
-  Scenario: handleGmailNavigation and handleGmailHashChange do not throw
-    Given a real App instance
-    When handleGmailNavigation is called on the App
-    And handleGmailHashChange is called on the App
-    Then no error is thrown
-
-  Scenario: bindEvents and bindGmailNavigationEvents do not throw
+  Scenario: bindEvents does not throw
     Given a real App instance
     When bindEvents is called on the App
-    And bindGmailNavigationEvents is called on the App
     Then no error is thrown
 
   # ------------------------------------------------------------------
@@ -200,17 +193,14 @@ Feature: App Class
     Then the App log memory length is at most max
 
   # ------------------------------------------------------------------
-  # Hash Change Handling
+  # Gmail Adapter
   # ------------------------------------------------------------------
 
-  Scenario: Handles hash changes correctly
+  Scenario: App creates gmail adapter subsystem
     Given a real App instance
-    Then handleGmailHashChange is a function on the App
-    And calling handleGmailHashChange does not throw
-    And the App temp lastHash is defined
+    Then the App has gmail adapter wired
 
-  Scenario: Does not trigger redraw for same hash
+  Scenario: App init calls gmail.init
     Given a real App instance
-    Then handleGmailHashChange is a function on the App
-    And calling handleGmailHashChange does not throw
-    And the App temp lastHash is defined
+    When init is called on the App
+    Then the App gmail adapter is initialized

@@ -2,7 +2,7 @@
  * Integration test helpers for Gmail-2-Trello
  *
  * These helpers create a REAL G2T.App with all real classes wired together,
- * mocking only external boundaries (Chrome APIs, Trello REST, MutationObserver).
+ * mocking only external boundaries (Chrome APIs, Trello REST).
  */
 
 const {
@@ -53,7 +53,7 @@ function loadAllSources() {
   loadSourceFile('chrome_manifest_v3/class_menuControl.js');
   loadSourceFile('chrome_manifest_v3/class_waitCounter.js');
   loadSourceFile('chrome_manifest_v3/class_eventTarget.js');
-  loadSourceFile('chrome_manifest_v3/class_observer.js');
+  loadSourceFile('chrome_manifest_v3/class_gmail.js');
   loadSourceFile('chrome_manifest_v3/class_goog.js');
   loadSourceFile('chrome_manifest_v3/class_trel.js');
   loadSourceFile('chrome_manifest_v3/views/class_gmailView.js');
@@ -84,38 +84,12 @@ function createRealApp() {
     };
   }
 
-  // Mock MutationObserver
-  sharedWindow.MutationObserver = class MockMutationObserver {
-    constructor(cb) {
-      this._cb = cb;
-    }
-    observe() {}
-    disconnect() {}
-    trigger(mutations) {
-      this._cb(mutations, this);
-    }
-  };
-
   // Mock setInterval to prevent PopupView.init from creating a timer
   // that keeps Node alive
   const origSetInterval = sharedWindow.setInterval;
-  const intervalIds = [];
   sharedWindow.setInterval = function (cb, ms) {
     // Return a fake interval ID but don't actually schedule
     return 99999;
-  };
-
-  // Mock window.addEventListener to drop hashchange listeners
-  // (App.bindGmailNavigationEvents adds one that can keep Node alive)
-  const origAddEventListener = sharedWindow.addEventListener;
-  const hashchangeListeners = [];
-  sharedWindow.addEventListener = function (type, listener, ...rest) {
-    if (type === 'hashchange') {
-      // Capture but don't actually bind to prevent process hanging
-      hashchangeListeners.push(listener);
-      return;
-    }
-    return origAddEventListener.call(sharedWindow, type, listener, ...rest);
   };
 
   // Load all source files
@@ -132,15 +106,6 @@ function createRealApp() {
 
   // Restore setInterval
   sharedWindow.setInterval = origSetInterval;
-
-  // Restore addEventListener
-  sharedWindow.addEventListener = origAddEventListener;
-
-  // Store hashchange listeners so tests can invoke them
-  app._hashchangeListeners = hashchangeListeners;
-
-  // Store the MutationObserver mock reference on app for test access
-  app._MockMutationObserver = sharedWindow.MutationObserver;
 
   return app;
 }

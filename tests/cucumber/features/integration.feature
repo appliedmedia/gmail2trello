@@ -10,7 +10,7 @@ Feature: Integration tests -- real G2T classes wired together
   # -------------------------------------------------------------------
 
   Scenario: App constructor wires all subsystems
-    Then the app has real subsystems: events, model, gmailView, popupView, utils, obs, goog
+    Then the app has real subsystems: events, model, gmailView, popupView, utils, gmail, goog
     And all subsystems reference the same app instance
     And EventTarget has listeners registered by Model, GmailView, PopupView, and PopupForm
 
@@ -136,19 +136,18 @@ Feature: Integration tests -- real G2T classes wired together
     Then parseData returns undefined without crashing
 
   # -------------------------------------------------------------------
-  # Navigation and Redraw
+  # Navigation and Redraw via gmail.js events
   # -------------------------------------------------------------------
 
-  Scenario: Hashchange triggers forceRedraw
-    Given the real app has a g2tButton in the DOM
-    When a hashchange event fires with different hash sections
-    Then the g2tButton is removed from the DOM
+  Scenario: gmailViewChanged event triggers button validation
+    Given the real app is initialized with gmail adapter
+    When gmailViewChanged event fires on the real app
+    Then the popupView handleGmailViewChanged ran without error
 
-  Scenario: Observer toolbar mutation triggers toolbarChanged event
-    Given the real app has observer watching toolbar
-    And a toolbar mutation is prepared
-    When toolbar mutations are triggered with debounce
-    Then toolbarChanged event fires on the real app
+  Scenario: gmailLoaded event triggers button detection
+    Given the real app is initialized with gmail adapter
+    When gmailLoaded event fires on the real app
+    Then the popupView handleGmailLoaded ran without error
 
   # -------------------------------------------------------------------
   # Hydration Gate

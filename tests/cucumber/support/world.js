@@ -238,9 +238,9 @@ function createApp() {
       forceRedraw: createMockFn(),
     },
 
-    obs: {
+    gmail: {
       init: createMockFn(),
-      observeToolbar: createMockFn(),
+      ready: false,
     },
 
     trel: {
@@ -267,7 +267,6 @@ function createApp() {
     },
 
     temp: {
-      lastHash: '',
       updatesPending: [],
       comboInitialized: false,
       pendingMessage: null,

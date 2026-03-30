@@ -36,7 +36,6 @@
         "images/ui-icons_777777_256x240.png",
         "images/ui-icons_cc0000_256x240.png",
         "images/ui-icons_ffffff_256x240.png",
-        "inject.js",
         "lib/jquery-3.7.1.min.map",
         "views/error.html",
         "views/extensionInvalidReload.html",
@@ -57,6 +56,18 @@
       ],
       "js": [
         "lib/jquery-3.7.1.min.js",
+        "lib/gmail.min.js",
+        "gmail_loader.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "lib/jquery-3.7.1.min.js",
         "lib/jquery-ui-1.14.1.min.js",
         "lib/trello.min.js",
         "lib/combo.js",
@@ -64,7 +75,7 @@
         "class_menuControl.js",
         "class_waitCounter.js",
         "class_eventTarget.js",
-        "class_observer.js",
+        "class_gmail.js",
         "class_goog.js",
         "class_trel.js",
         "views/class_gmailView.js",

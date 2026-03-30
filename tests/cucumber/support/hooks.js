@@ -11,11 +11,8 @@ Before(function () {
 });
 
 After(function () {
-  // Clean up setInterval leaks from PopupView
+  // Clean up any interval leaks
   if (this.instance?.intervalId) {
     clearInterval(this.instance.intervalId);
-  }
-  if (this.app?.popupView?.intervalId) {
-    clearInterval(this.app.popupView.intervalId);
   }
 });

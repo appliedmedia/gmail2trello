@@ -19,7 +19,6 @@ Feature: PopupView Class
     And property MAX_BODY_SIZE is "16384"
     And the mouseDownTracker is an empty object
     And property lastError is ""
-    And property intervalId is "0"
     And the updatesPending is an empty array
     And property comboInitialized is false
 
@@ -129,9 +128,16 @@ Feature: PopupView Class
     When periodicChecks is called on the popupView
     Then finalCreatePopup was not invoked
 
-  Scenario: periodicChecks interval is 5000ms
-    Given a fresh PopupView capturing setInterval
-    Then the captured setInterval delay is 5000
+  Scenario: handleGmailViewChanged calls validateButtonState
+    Given a spy on validateButtonState
+    When handleGmailViewChanged is called on the popupView
+    Then validateButtonState was called
+
+  Scenario: handleGmailLoaded triggers button creation when toolbar is detected
+    Given popup DOM with no button
+    And the popupView gmailView preDetect returns true with toolbar
+    When handleGmailLoaded is called on the popupView
+    Then finalCreatePopup was invoked
 
   # --------------------------------------------------------------------------
   # dropdown change handlers
