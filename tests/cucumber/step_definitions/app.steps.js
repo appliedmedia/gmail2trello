@@ -357,6 +357,6 @@ Then('the App has gmail adapter wired', function () {
 });
 
 Then('the App gmail adapter is initialized', function () {
-  // After init(), gmail.init() should have been called, meaning the event listener was set up
-  assert.ok(this._realApp.gmail, 'gmail adapter should exist');
+  // After init(), gmail.init() should have been called, setting _initialized flag
+  assert.ok(this._realApp.gmail._initialized, 'Gmail adapter should be initialized');
 });

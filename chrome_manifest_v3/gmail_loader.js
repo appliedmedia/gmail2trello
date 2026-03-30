@@ -3,7 +3,6 @@
 (function () {
   const waitForGmail = setInterval(() => {
     if (typeof Gmail !== 'undefined' && typeof jQuery !== 'undefined') {
-      clearInterval(waitForGmail);
       try {
         const gmail = new Gmail(jQuery);
 
@@ -29,8 +28,11 @@
           }),
         );
         gmail.observe.on('open_email', () => emit('open_email'));
+
+        // Only clear interval after successful setup
+        clearInterval(waitForGmail);
       } catch (_e) {
-        // Gmail.js failed to initialize -- will be detected by content script timeout
+        // Gmail.js failed -- interval continues to retry
       }
     }
   }, 100);

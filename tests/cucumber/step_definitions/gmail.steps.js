@@ -28,6 +28,18 @@ After(function () {
 });
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function registerGmailEventCleanup(world) {
+  if (world.instance && world.instance._gmailEventHandler) {
+    world._gmailEventCleanup = () => {
+      sharedDocument.removeEventListener('g2t_gmail_event', world.instance._gmailEventHandler);
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Given steps
 // ---------------------------------------------------------------------------
 
@@ -55,12 +67,7 @@ Given('a fresh Gmail adapter', function () {
 When('init is called on the gmail adapter', function () {
   try {
     this.instance.init();
-    // Store cleanup reference for After hook
-    this._gmailEventCleanup = () => {
-      if (this.instance._gmailEventHandler) {
-        sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
-      }
-    };
+    registerGmailEventCleanup(this);
     this.error = null;
   } catch (e) {
     this.error = e;
@@ -70,12 +77,7 @@ When('init is called on the gmail adapter', function () {
 When('a g2t_gmail_event is dispatched with type {string} and userEmail {string}', function (type, userEmail) {
   // init the adapter so it listens
   this.instance.init();
-  // Store cleanup reference for After hook
-  this._gmailEventCleanup = () => {
-    if (this.instance._gmailEventHandler) {
-      sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
-    }
-  };
+  registerGmailEventCleanup(this);
 
   // Reset mock calls before the action so we only check fresh emits
   this.app.events.emit.mock.resetCalls();
@@ -89,12 +91,7 @@ When('a g2t_gmail_event is dispatched with type {string} and userEmail {string}'
 When('a g2t_gmail_event is dispatched with type {string}', function (type) {
   // init the adapter so it listens
   this.instance.init();
-  // Store cleanup reference for After hook
-  this._gmailEventCleanup = () => {
-    if (this.instance._gmailEventHandler) {
-      sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
-    }
-  };
+  registerGmailEventCleanup(this);
 
   // Reset mock calls before the action so we only check fresh emits
   this.app.events.emit.mock.resetCalls();
@@ -108,12 +105,7 @@ When('a g2t_gmail_event is dispatched with type {string}', function (type) {
 When('a g2t_gmail_event is dispatched with type {string} and page {string} and subject {string}', function (type, page, subject) {
   // init the adapter so it listens
   this.instance.init();
-  // Store cleanup reference for After hook
-  this._gmailEventCleanup = () => {
-    if (this.instance._gmailEventHandler) {
-      sharedDocument.removeEventListener('g2t_gmail_event', this.instance._gmailEventHandler);
-    }
-  };
+  registerGmailEventCleanup(this);
 
   // Reset mock calls before the action so we only check fresh emits
   this.app.events.emit.mock.resetCalls();
@@ -155,15 +147,15 @@ Then('a g2t_gmail_event listener is registered on document', function () {
     detail: { type: 'load' },
   });
   sharedDocument.dispatchEvent(event);
-  // If init worked, emit should have been called with gmailLoaded
+  // If init worked, emit should have been called with exactly 1 gmailLoaded
   const calls = this.app.events.emit.mock.calls;
-  const found = calls.some(c => {
+  const gmailLoadedCalls = calls.filter(c => {
     const arg = c.arguments[0];
-    if (typeof arg === 'string' && arg === 'gmailLoaded') return true;
-    if (typeof arg === 'object' && arg.type === 'gmailLoaded') return true;
+    if (typeof arg === 'string') return arg === 'gmailLoaded';
+    if (arg && typeof arg === 'object') return arg.type === 'gmailLoaded';
     return false;
-  });
-  assert.ok(found, 'Expected gmailLoaded event after dispatching g2t_gmail_event with type "load"');
+  }).length;
+  assert.strictEqual(gmailLoadedCalls, 1, `Expected exactly 1 gmailLoaded emit, got ${gmailLoadedCalls}`);
 });
 
 Then('app.events.emit was called with event {string}', function (eventName) {

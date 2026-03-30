@@ -46,7 +46,7 @@ class Gmail {
         if (detail.userEmail) {
           this.app.model.userEmail = detail.userEmail;
         }
-        this.app.utils.log('Gmail: ready event, userEmail=' + detail.userEmail);
+        this.app.utils.log('Gmail: ready event received');
         // Intentionally emits even when userEmail is undefined -- downstream handlers check for it
         this.app.events.emit('gmailReady', { userEmail: detail.userEmail });
         break;
