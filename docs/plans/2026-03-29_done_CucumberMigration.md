@@ -2,7 +2,7 @@
 
 **Date**: 2026-03-29
 **Status**: DONE -- 625 Cucumber scenarios, 2345 steps. Jest and node:test suites removed.
-**Depends on**: v2 node:test suite (523 tests passing)
+**Originally depended on**: v2 node:test suite (523 tests passing) -- now removed
 **Purpose**: Migrate from custom `scenario()` helper to proper Cucumber with `.feature` files and reusable step definitions.
 
 ---

@@ -21,7 +21,7 @@
 
 ## 1. Dependency Graph
 
-```
+```text
 ROUND 1 (fully parallel -- zero shared files)
   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
   │ LANE A           │  │ LANE B           │  │ LANE C           │
@@ -100,6 +100,7 @@ ROUND 1 (fully parallel -- zero shared files)
 5. Update `getLists_success()`, `getCards_success()`, `getLabels_success()`, `getMembers_success()` to discard if version is stale
 
 **Test scenarios to add**:
+
 ```gherkin
 Scenario: _nextVersion increments counter for category
 Scenario: _isCurrentVersion true for latest version
@@ -133,6 +134,7 @@ Scenario: rapid getLists -- second call invalidates first response
 4. In failure callback path: `this._submitting = false;`
 
 **Test scenarios to add**:
+
 ```gherkin
 Scenario: handleSubmit sets _submitting to true
 Scenario: second handleSubmit while _submitting is blocked
@@ -164,6 +166,7 @@ Scenario: handleSubmit works again after success callback
 5. Wire existing success listeners to call `_completeBoardLoadPart()`
 
 **Test scenarios to add**:
+
 ```gherkin
 Scenario: handleBoardChanged sets _boardLoadPending with 3 parts
 Scenario: handleBoardChanged clears stale temp arrays
@@ -212,6 +215,7 @@ Scenario: completion of old board load parts after switch is ignored
 7. Remove `g2tPosition` dropdown from HTML, CSS, JS handlers
 
 **Test scenarios to add**:
+
 ```gherkin
 # trel.feature
 Scenario: insertMode "to" with valid cardId calls addToExistingCard
@@ -318,7 +322,7 @@ No two lanes touch the same file at the same time. This eliminates merge conflic
 
 ## 5. Timeline Estimate
 
-```
+```text
             Day 1                    Day 2              Day 3
   ┌─────────────────────────┐  ┌──────────────┐  ┌──────────┐
   │ A: Version counter (2h) │  │              │  │          │

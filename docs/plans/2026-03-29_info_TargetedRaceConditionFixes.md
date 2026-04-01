@@ -357,10 +357,12 @@ FILES TO UPDATE:
 ## 6. Implementation Phases
 
 ### Wave 0: Write Missing Tests (baseline) -- DONE
+
 - [x] Cucumber test suite: 625 scenarios, 2345 steps
 - [x] Coverage across all 12 source classes + integration tests
 
 ### Wave 1: Gmail.js Integration -- DONE (PR #136, 2026-03-30)
+
 - [x] gmail.js v1.1.16 integrated with event-driven detection
 - [x] class_observer.js and inject.js deleted
 - [x] RACE-7 eliminated, setInterval polling removed
