@@ -1,8 +1,9 @@
 # Gmail-2-Trello: Race Condition Fixes Plan
 
-**Date**: 2026-03-29 (updated)
-**Status**: Design / Pre-implementation
-**Depends on**: `swimlanes.md` (race condition analysis)
+**Date**: 2026-03-29 (updated 2026-04-01)
+**Status**: Active -- Wave 1 (gmail.js) DONE. Waves 2-4 ready to execute.
+**Depends on**: `2026-03-29_info_SwimlanesRaceConditionAnalysis.md` (race condition analysis)
+**Execution plan**: `2026-04-01_todo_ExecutionSwimLanes.md` (parallel agent lanes)
 **Purpose**: Fix the race conditions identified in the swimlane analysis with three small, targeted changes -- no orchestrator class. Then safely implement the "add to card" feature on top of stable foundations.
 
 ---
@@ -355,15 +356,14 @@ FILES TO UPDATE:
 
 ## 6. Implementation Phases
 
-### Wave 0: Write Missing Tests (baseline)
-- [ ] Write tests against current code to establish a baseline
-- [ ] Cover the code paths that will be modified by the targeted fixes
-- [ ] See `test-plan.md` for details
+### Wave 0: Write Missing Tests (baseline) -- DONE
+- [x] Cucumber test suite: 625 scenarios, 2345 steps
+- [x] Coverage across all 12 source classes + integration tests
 
-### Wave 1: Gmail.js Integration (branch, not main)
-- [ ] See `gmail-js-integration.md`
-- [ ] Eliminates RACE-7 (duplicate popupLoaded) entirely
-- [ ] Eliminates setInterval, inject.js, class_observer.js
+### Wave 1: Gmail.js Integration -- DONE (PR #136, 2026-03-30)
+- [x] gmail.js v1.1.16 integrated with event-driven detection
+- [x] class_observer.js and inject.js deleted
+- [x] RACE-7 eliminated, setInterval polling removed
 
 ### Wave 2: Targeted Race Condition Fixes
 - [ ] **Fix 1**: Version counter in `class_trel.js` (~20 lines, 2 hours)

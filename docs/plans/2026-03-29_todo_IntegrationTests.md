@@ -1,8 +1,8 @@
 # Gmail-2-Trello: Integration Test Plan
 
 **Date**: 2026-03-29
-**Status**: todo
-**Depends on**: Cucumber unit tests (608 scenarios passing)
+**Status**: Partially done -- 20 integration scenarios landed. New integration scenarios needed for add-to-card (Lane D in `2026-04-01_todo_ExecutionSwimLanes.md`).
+**Depends on**: Cucumber unit tests (625 scenarios passing)
 **Purpose**: Test real class-to-class interactions with only external boundaries mocked (Chrome APIs, Trello API, MutationObserver). All G2T classes are real.
 
 ---

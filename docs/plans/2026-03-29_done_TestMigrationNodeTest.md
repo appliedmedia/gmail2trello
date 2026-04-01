@@ -1,7 +1,7 @@
 # Gmail-2-Trello: Test Migration Swimlanes
 
 **Date**: 2026-03-29
-**Status**: Active -- EventTarget spike complete, pattern proven
+**Status**: DONE -- Completed, then superseded by Cucumber migration. node:test suite removed.
 **Purpose**: Parallelization plan for migrating 505 Jest tests to node:test with Given/When/Then format, plus new tests for orchestrator and untested files.
 
 ---

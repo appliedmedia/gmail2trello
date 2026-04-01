@@ -1,7 +1,7 @@
 # Gmail-2-Trello: Swimlane Analysis & Race Condition Audit
 
 **Date**: 2026-03-29
-**Status**: Analysis / Pre-implementation
+**Status**: Reference -- RACE-7 eliminated by gmail.js (PR #136). RACE-2/3/5 and board cascade remain to be fixed. See `2026-04-01_todo_ExecutionSwimLanes.md`.
 **Purpose**: Map every concurrent flow in G2T to identify race conditions, ordering violations, and state corruption risks before re-publishing.
 
 ---

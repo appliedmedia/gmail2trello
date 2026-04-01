@@ -1,7 +1,7 @@
 # Gmail-2-Trello: Cucumber Migration Plan
 
 **Date**: 2026-03-29
-**Status**: Design / Pre-implementation
+**Status**: DONE -- 625 Cucumber scenarios, 2345 steps. Jest and node:test suites removed.
 **Depends on**: v2 node:test suite (523 tests passing)
 **Purpose**: Migrate from custom `scenario()` helper to proper Cucumber with `.feature` files and reusable step definitions.
 

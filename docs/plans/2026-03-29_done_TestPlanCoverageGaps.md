@@ -1,7 +1,7 @@
 # Gmail-2-Trello: Test Plan
 
 **Date**: 2026-03-29
-**Status**: Active
+**Status**: DONE -- Superseded by Cucumber test suite. Jest coverage gaps no longer applicable.
 **Depends on**: `swimlanes.md`, `orchestrator.md`
 **Purpose**: Map current coverage, identify gaps, and define what tests to add -- organized by wave so independent work can be parallelized.
 
