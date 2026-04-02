@@ -3,7 +3,7 @@
 **Date**: 2026-04-01
 **Status**: Active
 **Depends on**: `2026-03-29_info_TargetedRaceConditionFixes.md` (design), `2026-03-29_info_SwimlanesRaceConditionAnalysis.md` (analysis)
-**Purpose**: Parallel execution plan for all remaining work. Each lane is assigned to an independent agent working in a git worktree. No lane touches another lane's files.
+**Purpose**: Parallel execution plan for all remaining work. Each lane is assigned to an independent agent working in a git worktree. No two lanes edit the same file concurrently; files may be touched by different lanes in different rounds (see §4 File Ownership Matrix).
 
 ---
 
@@ -288,19 +288,19 @@ Each lane works in a git worktree. When a lane completes:
 
 ### Merge Gates
 
-| Gate | Condition | Unlocks |
-|------|-----------|---------|
-| GATE 1 | Lanes A + B merged | Lane D can start trel.js and popupForm.js work |
-| GATE 2 | Lane C also merged | Lane D can start (all race fixes landed) |
-| GATE 3 | Lane D merged | Lane E can start |
+| Gate | Condition | Unlocks | Restriction |
+|------|-----------|---------|-------------|
+| GATE 1 | Lanes A + B merged | Lane D may begin design and test-writing | Source edits blocked until GATE 2 |
+| GATE 2 | Lanes A + B + C all merged | Lane D may edit source files | All race fixes landed |
+| GATE 3 | Lane D merged | Lane E may start | — |
 
-**If Lanes A/B/C finish at different times**: Lane D can begin design/test-writing immediately but must not modify source files until all three are merged. Tests can be written against the expected API (version counter methods, submit guard flag, boardDataReady event).
+**Early-start rule**: After GATE 1, Lane D can begin design and write tests against the expected API (version counter methods, submit guard flag, `boardDataReady` event). Source file edits (`class_trel.js`, `class_popupForm.js`, etc.) remain blocked until GATE 2 clears. This avoids merge conflicts while maximizing parallelism.
 
 ---
 
 ## 4. File Ownership Matrix
 
-No two lanes touch the same file at the same time. This eliminates merge conflicts.
+No two lanes edit the same file concurrently. Files may appear in multiple lanes but only in different rounds/gates, eliminating merge conflicts.
 
 | File | Lane A | Lane B | Lane C | Lane D | Lane E |
 |------|--------|--------|--------|--------|--------|

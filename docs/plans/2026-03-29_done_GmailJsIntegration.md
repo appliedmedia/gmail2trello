@@ -1,7 +1,7 @@
 # Gmail-2-Trello: Gmail.js Integration Plan
 
 **Date**: 2026-03-29
-**Status**: DONE -- Merged in PR #136 (2026-03-30). class_observer.js and inject.js deleted from `chrome_manifest_v3/`, gmail.js event-driven detection active.
+**Status**: DONE -- Merged in PR #136 (2026-03-30). class_observer.js and inject.js deleted from `chrome_manifest_v3/`; gmail.js event-driven detection active; bootstrap 100ms polling retained in `gmail_loader.js` for initial load (replaces 5-second `periodicChecks` polling).
 **Depends on**: `swimlanes.md` (race condition analysis)
 **Blocks**: `orchestrator.md` (event model changes affect race condition fix design)
 **Purpose**: Replace the polling + MutationObserver approach with gmail.js event-driven detection, eliminating the 5-second `setInterval` and RACE-7.
