@@ -1,6 +1,6 @@
 var G2T = G2T || {}; // must be var to guarantee correct scope - do not alter this line
 
-// Uploader class for handling attachment uploads
+// Uploader class — the single upload chain for both new-card and add-to-card
 class Uploader {
   constructor(args) {
     if (!args?.parent || !args?.app) {
@@ -9,6 +9,7 @@ class Uploader {
 
     Object.assign(this, args);
     this.itemsForUpload = [];
+    this._submitData = null;
   }
 
   init() {
@@ -36,11 +37,112 @@ class Uploader {
         );
       })
     ) {
-      // Add attachment to upload queue
       args.property = `cards/${this.cardId}/${args.property}`;
       this.itemsForUpload.push(args);
     }
     return this;
+  }
+
+  // Entry point — decides new card vs add-to-card, then chains through upload()
+  submit(data) {
+    this._submitData = data;
+
+    if (data.position === 'to' && data.cardId) {
+      // Add to existing card: queue comment + extras + attachments
+      this.cardId = data.cardId;
+
+      const text = data.description || data.body || '';
+      if (text) {
+        this.add({ property: 'actions/comments', text });
+      }
+
+      this._queueExtras(data);
+      this._queueAttachments(data);
+      this.upload();
+    } else {
+      // Create new card via API, then chain attachments
+      this._createNewCard(data);
+    }
+  }
+
+  _buildCardPayload(data) {
+    let pos = 'top';
+    if (data.cardPos) {
+      pos = data.cardPos;
+    } else if (data.position) {
+      const p = String(data.position).toLowerCase();
+      if (p === 'below' || p === 'bottom' || p === 'down') {
+        pos = 'bottom';
+      }
+    }
+
+    const payload = {
+      name: data.title || data.subject || 'No Subject',
+      desc: data.description || data.body || '',
+      idList: data.listId,
+      idBoard: data.boardId,
+      pos,
+    };
+
+    const labels = data.labels || data.labelsId;
+    if (labels?.length) payload.idLabels = labels;
+
+    const members = data.members || data.membersId;
+    if (members?.length) payload.idMembers = members;
+
+    if (data.dueDate) payload.due = data.dueDate;
+
+    return payload;
+  }
+
+  _createNewCard(data) {
+    const payload = this._buildCardPayload(data);
+
+    if (!payload.idList || !payload.idBoard) {
+      this.app.events.emit('invalidFormData', { data });
+      return;
+    }
+
+    this.trel.wrapApiCall(
+      'post',
+      'cards',
+      payload,
+      response => {
+        this.cardId = response.id;
+        data.cardId = response.id;
+        this._queueAttachments(data);
+        this.upload();
+      },
+      error => {
+        this.app.events.emit('createCard_failed', { data: error });
+      },
+    );
+  }
+
+  _queueExtras(data) {
+    const members = data.membersId || data.members;
+    if (members?.length) {
+      this.add({ property: 'idMembers', value: members, method: 'put' });
+    }
+    const labels = data.labelsId || data.labels;
+    if (labels?.length) {
+      this.add({ property: 'idLabels', value: labels, method: 'put' });
+    }
+    if (data.dueDate) {
+      this.add({ property: 'due', value: data.dueDate, method: 'put' });
+    }
+  }
+
+  _queueAttachments(data) {
+    const attachments = [...(data.attachment || []), ...(data.image || [])];
+    attachments.forEach(att => {
+      this.add({
+        method: 'post',
+        property: 'attachment',
+        value: att.url,
+        name: att.name,
+      });
+    });
   }
 
   attach(method, property, upload1, success, failure) {
@@ -93,7 +195,7 @@ class Uploader {
     this.app.goog.runtimeSendMessage(dict, callback); // Background script handles file uploads
   }
 
-  upload(data) {
+  upload() {
     const self = this;
     const generateKeysAndValues = function (object) {
       let keysAndValues = [];
@@ -106,8 +208,10 @@ class Uploader {
     };
     let upload1 = self.itemsForUpload.shift();
     if (!upload1) {
-      // All attachment uploads complete
-      self.app.events.emit('newCardUploadsComplete', { data });
+      // Queue drained — emit completion with the original submit data
+      self.app.events.emit('newCardUploadsComplete', {
+        data: self._submitData,
+      });
     } else {
       const dict_k = { cardId: this.cardId || '' };
 
@@ -116,25 +220,22 @@ class Uploader {
       upload1.method = undefined;
       upload1.property = undefined;
 
-      // Extract success and failure handlers to avoid duplication
-      const successHandler = data => {
-        Object.assign(data, {
+      const successHandler = responseData => {
+        Object.assign(responseData, {
           method: `${method} ${property}`,
           keys: generateKeysAndValues(upload1),
           emailId: self.emailId,
         });
-        if (self.itemsForUpload?.length > 0) {
-          self.upload();
-        }
+        self.upload(); // continue chain (emits newCardUploadsComplete when empty)
       };
 
-      const failureHandler = data => {
-        Object.assign(data, {
+      const failureHandler = responseData => {
+        Object.assign(responseData, {
           method: `${method} ${property}`,
           keys: generateKeysAndValues(upload1),
           emailId: self.emailId,
         });
-        self.app.events.emit('APIFail', { data });
+        self.app.events.emit('APIFail', { data: responseData });
       };
 
       // Use class_trel if available, otherwise fall back to direct Trello calls
@@ -323,34 +424,6 @@ class Model {
       // Need to load data
       this.trelloLoad();
     }
-  }
-
-  uploadAttachment(data = {}) {
-    if (!data.attachment || data.attachment.length === 0) {
-      this.app.events.emit('newCardUploadsComplete', { data });
-      return;
-    }
-
-    const uploader = new Uploader({
-      parent: this,
-      app: this.app,
-      cardId: data.cardId,
-      emailId: data.emailId,
-      trel: this.trel, // Pass the Trel instance to the uploader
-    });
-
-    uploader.init();
-
-    data.attachment.forEach(attachment => {
-      uploader.add({
-        method: 'post',
-        property: 'attachment',
-        value: attachment.url,
-        name: attachment.name,
-      });
-    });
-
-    uploader.upload(data);
   }
 
   trelloLoad() {
@@ -543,12 +616,14 @@ class Model {
       return;
     }
 
-    this.createCard(data);
-  }
-
-  createCard(data) {
-    // Use class_trel for card creation
-    this.trel.createCard(data);
+    const uploader = new Uploader({
+      parent: this,
+      app: this.app,
+      emailId: data.emailId,
+      trel: this.trel,
+    });
+    uploader.init();
+    uploader.submit(data);
   }
 
   emailBoardListCardMapLookup(key_value = {}) {
@@ -586,11 +661,11 @@ class Model {
     this.submit(data);
   }
 
-  handleTrelloCardCreateSuccess(target, params) {
+  handleNewCardUploadsComplete(target, params) {
     const { data } = params;
 
     // Update the email-board-list-card mapping
-    if (data.emailId && data.boardId && data.listId && data.cardId) {
+    if (data?.emailId && data?.boardId && data?.listId && data?.cardId) {
       this.emailBoardListCardMap.update({
         email: data.emailId,
         boardId: data.boardId,
@@ -598,12 +673,6 @@ class Model {
         cardId: data.cardId,
       });
     }
-
-    this.app.events.emit('cardCreationComplete', { data });
-  }
-
-  handlePostCardCreateUploadDisplayDone(target, params) {
-    this.app.events.emit('cardCreationComplete', { data: params.data });
   }
 
   // Form event handlers - moved from PopupView
@@ -631,12 +700,8 @@ class Model {
       this.handleSubmittedFormShownComplete.bind(this),
     );
     this.app.events.addListener(
-      'createCard_success',
-      this.handleTrelloCardCreateSuccess.bind(this),
-    );
-    this.app.events.addListener(
-      'postCardCreateUploadDisplayDone',
-      this.handlePostCardCreateUploadDisplayDone.bind(this),
+      'newCardUploadsComplete',
+      this.handleNewCardUploadsComplete.bind(this),
     );
 
     // Listen to board and list change events

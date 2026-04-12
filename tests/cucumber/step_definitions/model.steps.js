@@ -30,7 +30,7 @@ const cardSubmissionData = {
 const eventHandlerArgs = {
   handleClassModelStateLoaded: [{ type: 'stateLoaded' }, { data: 'test-data' }],
   handleSubmittedFormShownComplete: [{ id: 'test-form' }, { data: 'test-data' }],
-  handlePostCardCreateUploadDisplayDone: [{ id: 'test-upload' }, { data: 'test-data' }],
+  handleNewCardUploadsComplete: [{ id: 'test-upload' }, { data: { emailId: 'e1', boardId: 'b1', listId: 'l1', cardId: 'c1' } }],
   handleBoardChanged: [{ id: 'test-board' }, { boardId: 'test-board-id' }],
   handleListChanged: [{ id: 'test-list' }, { listId: 'test-list-id' }],
 };
@@ -267,34 +267,42 @@ When('Model submit is called with missing listId', function () {
   this.instance.submit({ title: 'Test Card', boardId: 'board1' });
 });
 
-When('Model createCard is called with basic data', function () {
-  try {
-    this.instance.createCard({ title: 'Test Card', description: 'Test Description' });
-    this.error = null;
-  } catch (e) {
-    this.error = e;
-  }
+Given('a spy on trel wrapApiCall', function () {
+  this._wrapApiCallSpy = createMockFn();
+  this.instance.trel.wrapApiCall = this._wrapApiCallSpy;
 });
 
-When('Model createCard is called with null', function () {
-  this.instance.createCard(null);
+Given('a spy on trel wrapApiCall that succeeds with cardId {string}', function (cardId) {
+  this._wrapApiCallSpy = createMockFn(function (method, path, params, success) {
+    if (success) success({ id: cardId });
+  });
+  this.instance.trel.wrapApiCall = this._wrapApiCallSpy;
 });
 
-When('Model uploadAttachment is called with attachment data', function () {
-  try {
-    this.instance.uploadAttachment({ attachments: [{ name: 'test.txt', value: 'test-content' }] });
-    this.error = null;
-  } catch (e) {
-    this.error = e;
-  }
+When('Model submit is called with position {string} and cardId {string}', function (position, cardId) {
+  this.instance.submit({ title: 'Test', description: 'Test body', boardId: 'board-1', listId: 'list-1', position, cardId });
 });
 
-When('Model uploadAttachment is called with no attachments', function () {
-  this.instance.uploadAttachment({ title: 'Test' });
+When('Model submit is called with position {string} and no cardId', function (position) {
+  this.instance.submit({ title: 'Test', description: 'Test body', boardId: 'board-1', listId: 'list-1', position });
 });
 
-When('Model uploadAttachment is called with empty attachments', function () {
-  this.instance.uploadAttachment({ attachment: [] });
+When('Model submit is called with position {string} and no attachments', function (position) {
+  this.instance.submit({ title: 'Test', description: 'Test body', boardId: 'board-1', listId: 'list-1', position });
+});
+
+Then('trel wrapApiCall was called with {string} and path containing {string}', function (method, pathFragment) {
+  const calls = this._wrapApiCallSpy.mock.calls;
+  assert.ok(calls.length > 0, 'Expected trel.wrapApiCall to have been called');
+  const match = calls.some(c => c.arguments[0] === method && c.arguments[1].includes(pathFragment));
+  assert.ok(match, `Expected wrapApiCall call with method "${method}" and path containing "${pathFragment}". Got: ${calls.map(c => `${c.arguments[0]} ${c.arguments[1]}`).join(', ')}`);
+});
+
+Then('trel wrapApiCall was called with {string} and path {string}', function (method, path) {
+  const calls = this._wrapApiCallSpy.mock.calls;
+  assert.ok(calls.length > 0, 'Expected trel.wrapApiCall to have been called');
+  const match = calls.some(c => c.arguments[0] === method && c.arguments[1] === path);
+  assert.ok(match, `Expected wrapApiCall call with method "${method}" and path "${path}". Got: ${calls.map(c => `${c.arguments[0]} ${c.arguments[1]}`).join(', ')}`);
 });
 
 When('emailBoardListCardMapLookup is called for {string}', function (email) {

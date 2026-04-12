@@ -96,7 +96,7 @@ Feature: Integration tests -- real G2T classes wired together
     Given the real app has auth complete
     And Trello REST is mocked to return a card with id "c1" on POST cards
     When submittedFormShownComplete event fires with valid form data
-    Then createCard_success event fires on the real app
+    Then newCardUploadsComplete event fires on the real app
     And the created card has cardId "c1"
 
   Scenario: Submit updates email-board-list-card mapping
