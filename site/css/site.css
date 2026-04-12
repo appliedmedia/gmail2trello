@@ -110,16 +110,17 @@
 }
 
 /* ============================================
-   Newsletter Form
+   Keep in Touch Form
    ============================================ */
-.newsletter-form {
+.keepintouch-form {
   display: flex;
   gap: var(--space-md);
   max-width: 500px;
   margin: 0 auto;
 }
 
-.newsletter-form input[type="email"] {
+.keepintouch-form input[type="email"] {
+  min-width: 320px;
   flex: 1;
   padding: var(--space-md) var(--space-lg);
   font-size: var(--font-size-base);
@@ -130,20 +131,53 @@
   color: var(--color-text);
 }
 
-.newsletter-form input[type="email"]::placeholder {
+.keepintouch-form input[type="email"]::placeholder {
   color: var(--color-text-muted);
 }
 
-.newsletter-form input[type="email"]:focus {
+.keepintouch-form input[type="email"]:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-color: var(--color-primary);
 }
 
 @media (max-width: 480px) {
-  .newsletter-form {
+  .keepintouch-form {
     flex-direction: column;
   }
+}
+
+/* ============================================
+   FAQ
+   ============================================ */
+.faq-list {
+  text-align: left;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-md) 0;
+}
+
+.faq-item summary {
+  cursor: pointer;
+  list-style: none;
+  padding: var(--space-sm) 0;
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::before {
+  content: "+";
+  margin-right: var(--space-sm);
+  font-weight: bold;
+  color: var(--color-text-muted);
+}
+
+.faq-item[open] summary::before {
+  content: "\2212";
 }
 
 /* ============================================
