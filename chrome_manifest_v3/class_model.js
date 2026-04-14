@@ -84,10 +84,10 @@ class Uploader {
       pos,
     };
 
-    const labels = data.labels || data.labelsId;
+    const labels = data.labelsId || data.labels;
     if (labels?.length) payload.idLabels = labels;
 
-    const members = data.members || data.membersId;
+    const members = data.membersId || data.members;
     if (members?.length) payload.idMembers = members;
 
     if (data.dueDate) payload.due = data.dueDate;
