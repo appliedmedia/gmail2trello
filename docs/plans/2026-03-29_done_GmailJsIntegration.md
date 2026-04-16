@@ -1,10 +1,28 @@
 # Gmail-2-Trello: Gmail.js Integration Plan
 
 **Date**: 2026-03-29
-**Status**: Design / Pre-implementation
+**Status**: Done (commit bc95ab5)
 **Depends on**: `swimlanes.md` (race condition analysis)
-**Blocks**: `orchestrator.md` (event model changes affect race condition fix design)
-**Purpose**: Replace the polling + MutationObserver approach with gmail.js event-driven detection, eliminating the 5-second `setInterval` and RACE-7.
+**Blocks**: `orchestrator.md` (event model changes affect race
+condition fix design)
+**Purpose**: Replace the polling + MutationObserver approach with
+gmail.js event-driven detection, eliminating the 5-second
+`setInterval` and RACE-7.
+
+> **Historical plan below.** Downstream sections describe the
+> original design, not current implementation guidance. References
+> to class\_gmail.js, PopupView, inject.js, class\_observer.js,
+> and events (gmailViewChanged, gmailLoaded) are historical context.
+
+### Reconciliation (2026-04-16)
+
+Gmail.js integration shipped in commit bc95ab5. The CustomEvent
+bridge pattern (Option A from section 9) was implemented.
+`gmail_loader.js` runs in MAIN world and dispatches
+`g2t_gmail_event` to the content script. `class_gmail.js`
+translates these to G2T events (`gmailReady`, `gmailLoaded`,
+`gmailViewChanged`). The `setInterval` polling and RACE-7 are
+eliminated as planned.
 
 ---
 

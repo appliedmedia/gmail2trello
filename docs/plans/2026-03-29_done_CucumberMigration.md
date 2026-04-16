@@ -1,9 +1,21 @@
 # Gmail-2-Trello: Cucumber Migration Plan
 
 **Date**: 2026-03-29
-**Status**: Design / Pre-implementation
+**Status**: Done (632+ Cucumber scenarios, sole test runner)
 **Depends on**: v2 node:test suite (523 tests passing)
-**Purpose**: Migrate from custom `scenario()` helper to proper Cucumber with `.feature` files and reusable step definitions.
+**Purpose**: Migrate from custom `scenario()` helper to proper
+Cucumber with `.feature` files and reusable step definitions.
+
+> **Historical plan below.** Sections describe the original design.
+> Cucumber is now the sole test runner; Jest and node:test removed.
+> Runtime count as of 2026-04-14: 632 scenarios, 2384 steps.
+
+### Reconciliation (2026-04-16)
+
+All phases complete. Cucumber is sole test runner. The v2/node:test
+suite and Jest were fully removed. Scenario count exceeded the
+original 523 target. Shared step definitions (construction, events,
+state, errors) serve all 12+ feature files as planned.
 
 ---
 

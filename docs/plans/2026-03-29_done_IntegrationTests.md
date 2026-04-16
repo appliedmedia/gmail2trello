@@ -1,9 +1,28 @@
 # Gmail-2-Trello: Integration Test Plan
 
 **Date**: 2026-03-29
-**Status**: todo
-**Depends on**: Cucumber unit tests (608 scenarios passing)
-**Purpose**: Test real class-to-class interactions with only external boundaries mocked (Chrome APIs, Trello API, MutationObserver). All G2T classes are real.
+**Status**: Done with known gap (20 integration scenarios passing;
+missing add-comment-to-card integration test)
+**Depends on**: Cucumber unit tests (632+ scenarios passing)
+**Purpose**: Test real class-to-class interactions with only
+external boundaries mocked (Chrome APIs, Trello API,
+MutationObserver). All G2T classes are real.
+
+> **Historical plan below.** 20 of the planned integration
+> scenarios are implemented and passing. One gap remains:
+> add-comment-to-card through the real Model-Trel-Uploader chain.
+
+### Reconciliation (2026-04-16)
+
+Integration tests are in
+`tests/cucumber/features/integration.feature` with helpers in
+`tests/cucumber/support/integration_helpers.js`. All planned
+scenarios from sections 2.1 through 2.7 are implemented. The one
+known gap is an integration test for the add-to-card (comment) path
+through the unified Uploader chain. This will be added when Wave 2
+race condition fixes land (the Uploader path is not safe to
+integration-test until stale-response discarding is in place). See
+[FixAddToCard](<2026-04-05_done_FixAddToCard.md>) for details.
 
 ---
 
