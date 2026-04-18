@@ -144,16 +144,6 @@ function installBrowserMocks() {
   );
   sharedWindow.confirm = createMockFn(() => false);
   sharedWindow.location.reload = createMockFn();
-
-  sharedWindow.analytics = {
-    getService: createMockFn(() => ({
-      getTracker: createMockFn(() => ({
-        sendAppView: createMockFn(),
-        sendEvent: createMockFn(),
-      })),
-    })),
-  };
-  global.analytics = sharedWindow.analytics;
 }
 
 // Install once at module level so initial class loading works

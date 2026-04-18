@@ -78,12 +78,6 @@ Given('the App popupView is set to null', function () {
   this._realApp.popupView = null;
 });
 
-Given('analytics.getService is set to throw', function () {
-  sharedWindow.analytics.getService = createMockFn(() => {
-    throw new Error('Analytics service not available');
-  });
-});
-
 Given('the App goog.init is set to throw', function () {
   this._realApp.goog.init = createMockFn(() => {
     throw new Error('Chrome init failed');

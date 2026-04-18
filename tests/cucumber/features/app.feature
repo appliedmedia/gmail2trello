@@ -104,12 +104,6 @@ Feature: App Class
     Then the App initialized flag is false
     And the App has all subsystems present
 
-  Scenario: init handles Google Analytics errors gracefully
-    Given a real App instance
-    And analytics.getService is set to throw
-    When init is called on the App
-    Then no error is thrown
-
   # ------------------------------------------------------------------
   # State Management
   # ------------------------------------------------------------------

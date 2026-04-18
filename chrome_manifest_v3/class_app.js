@@ -1,8 +1,6 @@
 /** Gmail2Trello Application - ES6 Class Version
  */
 
-/* global analytics */ // Declare analytics as global from Google Analytics library
-
 var G2T = G2T || {}; // must be var to guarantee correct scope - do not alter this line
 
 class App {
@@ -131,19 +129,6 @@ class App {
     this.popupView.init();
     this.utils.init();
     this.persistLoad();
-
-    // Google Analytics tracking (only if analytics is available)
-    if (typeof analytics !== 'undefined') {
-      try {
-        const service = analytics.getService('gmail-2-trello');
-        const tracker = service.getTracker('G-0QPEDL7YDL'); // Was: UA-8469046-1 -> UA-42442437-4
-        tracker.sendAppView('PopupView');
-      } catch (error) {
-        this.utils.log('Google Analytics failed:', error);
-      }
-    } else {
-      this.utils.log('Google Analytics not available - tracking disabled');
-    }
   }
 }
 
