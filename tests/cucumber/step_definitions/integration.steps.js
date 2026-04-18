@@ -112,7 +112,7 @@ Given('all G2T classes are loaded and a real App is created', function () {
     'gmailDataReady',
     'toolbarChanged',
     'forceRedraw',
-    'cardCreationComplete',
+    'newCardUploadsComplete',
   ];
   eventsToTrack.forEach(name => {
     trackEvent(this._realApp, name, this._firedEvents, this._eventData);
@@ -523,16 +523,16 @@ When('submittedFormShownComplete event fires with null data', function () {
   this._realApp.events.emit('submittedFormShownComplete', { data: null });
 });
 
-Then('createCard_success event fires on the real app', function () {
+Then('newCardUploadsComplete event fires on the real app', function () {
   assert.ok(
-    this._firedEvents['createCard_success'],
-    'createCard_success did not fire',
+    this._firedEvents['newCardUploadsComplete'],
+    'newCardUploadsComplete did not fire',
   );
 });
 
 Then('the created card has cardId {string}', function (cardId) {
-  const data = this._eventData['createCard_success']?.data;
-  assert.ok(data, 'createCard_success event data missing');
+  const data = this._eventData['newCardUploadsComplete']?.data;
+  assert.ok(data, 'newCardUploadsComplete event data missing');
   assert.strictEqual(data.cardId, cardId);
 });
 

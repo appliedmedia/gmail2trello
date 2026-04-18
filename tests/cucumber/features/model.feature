@@ -211,14 +211,6 @@ Feature: Model Class
       | empty card data      | empty            |
       | null card data       | null             |
 
-  Scenario: createCard does not throw
-    When Model createCard is called with basic data
-    Then no error is thrown
-
-  Scenario: uploadAttachment does not throw
-    When Model uploadAttachment is called with attachment data
-    Then no error is thrown
-
   # ------------------------------------------------------------------
   # Email Board List Card Mapping
   # ------------------------------------------------------------------
@@ -254,7 +246,7 @@ Feature: Model Class
       | name                | method                                 |
       | state loaded event  | handleClassModelStateLoaded            |
       | form submission     | handleSubmittedFormShownComplete        |
-      | upload completion   | handlePostCardCreateUploadDisplayDone  |
+      | upload completion   | handleNewCardUploadsComplete           |
       | board change        | handleBoardChanged                     |
       | list change         | handleListChanged                      |
 
@@ -286,16 +278,32 @@ Feature: Model Class
     When Model submit is called with "null"
     Then the Model emitted "invalidFormData"
 
-  Scenario: createCard emits invalidFormData when data is null
-    When Model createCard is called with null
-    Then the Model emitted "invalidFormData"
+  # ------------------------------------------------------------------
+  # Uploader submit routing (unified chain)
+  # ------------------------------------------------------------------
 
-  Scenario: uploadAttachment emits newCardUploadsComplete when no attachments
-    When Model uploadAttachment is called with no attachments
-    Then the Model emitted "newCardUploadsComplete"
+  Scenario: submit with position "to" and cardId posts comment via Uploader
+    Given Model trelloAuthorized is set to true
+    And a spy on trel wrapApiCall
+    When Model submit is called with position "to" and cardId "card-abc"
+    Then trel wrapApiCall was called with "post" and path containing "actions/comments"
 
-  Scenario: uploadAttachment emits newCardUploadsComplete when empty attachments
-    When Model uploadAttachment is called with empty attachments
+  Scenario: submit with position "to" but no cardId creates new card via Uploader
+    Given Model trelloAuthorized is set to true
+    And a spy on trel wrapApiCall
+    When Model submit is called with position "to" and no cardId
+    Then trel wrapApiCall was called with "post" and path "cards"
+
+  Scenario: submit with position "below" creates new card via Uploader
+    Given Model trelloAuthorized is set to true
+    And a spy on trel wrapApiCall
+    When Model submit is called with position "below" and cardId "card-abc"
+    Then trel wrapApiCall was called with "post" and path "cards"
+
+  Scenario: submit with no attachments emits newCardUploadsComplete after card creation
+    Given Model trelloAuthorized is set to true
+    And a spy on trel wrapApiCall that succeeds with cardId "new-card-1"
+    When Model submit is called with position "below" and no attachments
     Then the Model emitted "newCardUploadsComplete"
 
   # ------------------------------------------------------------------
