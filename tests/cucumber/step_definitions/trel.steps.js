@@ -459,16 +459,8 @@ When('the {word} captured Trello.rest failure is invoked', function (ordinal) {
   captured(this, ordinal).failure({ error: `failure-${ordinal}` });
 });
 
-Then('events.emit was not called with {string}', function (eventName) {
-  const calls = this.app.events.emit.mock.calls;
-  const found = calls.some((call) => {
-    const arg = call.arguments[0];
-    if (typeof arg === 'object' && arg && arg.type === eventName) return true;
-    if (typeof arg === 'string' && arg === eventName) return true;
-    return false;
-  });
-  assert.ok(!found, `Expected events.emit NOT to have been called with "${eventName}"`);
-});
+// `events.emit was not called with {string}` lives in shared/events.steps.js
+// (added by the Wave 2 Lane 3 cherry-pick). Don't redefine here.
 
 Then('the first card name is {string}', function (expected) {
   assert.strictEqual(this.app.temp.cards[0].name, expected);
