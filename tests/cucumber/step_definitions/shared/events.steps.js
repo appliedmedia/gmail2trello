@@ -49,3 +49,14 @@ Then('events.emit was called with {string}', function (eventName) {
   });
   assert.ok(found, `Expected events.emit to have been called with "${eventName}"`);
 });
+
+Then('events.emit was not called with {string}', function (eventName) {
+  const calls = this.app.events.emit.mock.calls;
+  const found = calls.some((call) => {
+    const arg = call.arguments[0];
+    if (typeof arg === 'object' && arg.type === eventName) return true;
+    if (typeof arg === 'string' && arg === eventName) return true;
+    return false;
+  });
+  assert.ok(!found, `Expected events.emit NOT to have been called with "${eventName}"`);
+});

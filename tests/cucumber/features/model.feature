@@ -379,3 +379,43 @@ Feature: Model Class
     When handleListChanged is called with listId "list-same"
     And handleListChanged is called with listId "list-same"
     Then the loadTrelloCards spy was called 2 times
+
+  # ------------------------------------------------------------------
+  # Board Load Cascade Tracking (Wave 2 Lane 3)
+  # ------------------------------------------------------------------
+
+  Scenario: handleBoardChanged sets tracking state
+    When handleBoardChanged is called with boardId "board1"
+    Then Model._boardLoadId is "board1"
+    And Model._boardLoadPending has 3 items
+
+  Scenario: _completeBoardLoadPart tracks individual completion
+    Given handleBoardChanged was called with boardId "board1"
+    When _completeBoardLoadPart is called with "lists" and "board1"
+    Then Model._boardLoadPending has 2 items
+
+  Scenario: boardDataReady fires when all 3 parts complete
+    Given handleBoardChanged was called with boardId "board1"
+    When _completeBoardLoadPart is called with "lists" and "board1"
+    And _completeBoardLoadPart is called with "labels" and "board1"
+    And _completeBoardLoadPart is called with "members" and "board1"
+    Then events.emit was called with "boardDataReady"
+
+  Scenario: boardDataReady does NOT fire when only 2 parts complete
+    Given handleBoardChanged was called with boardId "board1"
+    When _completeBoardLoadPart is called with "lists" and "board1"
+    And _completeBoardLoadPart is called with "labels" and "board1"
+    Then events.emit was not called with "boardDataReady"
+
+  Scenario: Rapid board switch resets tracking
+    Given handleBoardChanged was called with boardId "board1"
+    When handleBoardChanged is called with boardId "board2"
+    Then Model._boardLoadId is "board2"
+    And Model._boardLoadPending has 3 items
+
+  Scenario: Stale board completions are ignored after switch
+    Given handleBoardChanged was called with boardId "board1"
+    And handleBoardChanged was called with boardId "board2"
+    When _completeBoardLoadPart is called with "lists" and "board1"
+    Then Model._boardLoadPending has 3 items
+    And events.emit was not called with "boardDataReady"
