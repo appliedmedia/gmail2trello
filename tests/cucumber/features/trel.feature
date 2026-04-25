@@ -279,6 +279,7 @@ Feature: Trel Class
   Scenario: getLists_success with stale version discards response
     Given _nextVersion is called with "lists" on Trel
     And _nextVersion is called with "lists" on Trel
+    And app.temp.lists is seeded with sentinel data
     When getLists_success is called with lists named "stale" and version 1 on Trel
     Then app.temp.lists is unchanged
 
@@ -292,17 +293,82 @@ Feature: Trel Class
   Scenario: getCards_success with stale version discards response
     Given _nextVersion is called with "cards" on Trel
     And _nextVersion is called with "cards" on Trel
+    And app.temp.cards is seeded with sentinel data
     When getCards_success is called with cards named "stale" and version 1 on Trel
     Then app.temp.cards is unchanged
 
   Scenario: getLabels_success with stale version discards response
     Given _nextVersion is called with "labels" on Trel
     And _nextVersion is called with "labels" on Trel
+    And app.temp.labels is seeded with sentinel data
     When getLabels_success is called with labels named "stale" and version 1 on Trel
     Then app.temp.labels is unchanged
 
   Scenario: getMembers_success with stale version discards response
     Given _nextVersion is called with "members" on Trel
     And _nextVersion is called with "members" on Trel
+    And app.temp.members is seeded with sentinel data
     When getMembers_success is called with members named "stale" and version 1 on Trel
     Then app.temp.members is unchanged
+
+  # ------------------------------------------------------------------
+  # Real Request Path through wrapApiCall (Wave 2, Lane 1)
+  # Verifies that getLists/getCards/getLabels/getMembers actually
+  # capture _nextVersion and propagate it through wrapApiCall's
+  # success/failure closure. If anyone regresses one of those methods
+  # back to an unversioned callback, these scenarios catch it.
+  # ------------------------------------------------------------------
+
+  Scenario: getLists threads version through wrapApiCall (stale success discarded)
+    Given trelloAuthorized is set to "true"
+    And app.temp.lists is seeded with sentinel data
+    And Trello.rest defers all responses
+    When getLists is called on the Trel instance with "boardA"
+    And getLists is called on the Trel instance with "boardB"
+    And the 1st captured Trello.rest success is invoked with lists named "boardA-stale"
+    Then app.temp.lists is unchanged
+    When the 2nd captured Trello.rest success is invoked with lists named "boardB-fresh"
+    Then the first list name is "boardB-fresh"
+
+  Scenario: getLists threads version through wrapApiCall (stale failure discarded)
+    Given trelloAuthorized is set to "true"
+    And Trello.rest defers all responses
+    When getLists is called on the Trel instance with "boardA"
+    And getLists is called on the Trel instance with "boardB"
+    And the 1st captured Trello.rest failure is invoked
+    Then events.emit was not called with "APIFail"
+    When the 2nd captured Trello.rest failure is invoked
+    Then events.emit was called with "APIFail"
+
+  Scenario: getCards threads version through wrapApiCall (stale success discarded)
+    Given trelloAuthorized is set to "true"
+    And app.temp.cards is seeded with sentinel data
+    And Trello.rest defers all responses
+    When getCards is called on the Trel instance with "listA"
+    And getCards is called on the Trel instance with "listB"
+    And the 1st captured Trello.rest success is invoked with cards named "listA-stale"
+    Then app.temp.cards is unchanged
+    When the 2nd captured Trello.rest success is invoked with cards named "listB-fresh"
+    Then the first card name is "listB-fresh"
+
+  Scenario: getLabels threads version through wrapApiCall (stale success discarded)
+    Given trelloAuthorized is set to "true"
+    And app.temp.labels is seeded with sentinel data
+    And Trello.rest defers all responses
+    When getLabels is called on the Trel instance with "boardA"
+    And getLabels is called on the Trel instance with "boardB"
+    And the 1st captured Trello.rest success is invoked with labels named "boardA-stale"
+    Then app.temp.labels is unchanged
+    When the 2nd captured Trello.rest success is invoked with labels named "boardB-fresh"
+    Then the first label name is "boardB-fresh"
+
+  Scenario: getMembers threads version through wrapApiCall (stale success discarded)
+    Given trelloAuthorized is set to "true"
+    And app.temp.members is seeded with sentinel data
+    And Trello.rest defers all responses
+    When getMembers is called on the Trel instance with "boardA"
+    And getMembers is called on the Trel instance with "boardB"
+    And the 1st captured Trello.rest success is invoked with members named "boardA-stale"
+    Then app.temp.members is unchanged
+    When the 2nd captured Trello.rest success is invoked with members named "boardB-fresh"
+    Then the first member fullName is "boardB-fresh"

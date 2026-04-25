@@ -340,34 +340,144 @@ When(
   },
 );
 
-Then('app.temp.lists is unchanged', function () {
+// Seed a sentinel value for app.temp.{category} and remember it so the
+// "unchanged" assertion can verify the sentinel survived a stale callback
+// (rather than allowing undefined / [] to count as "unchanged").
+Given('app.temp.{word} is seeded with sentinel data', function (category) {
+  const sentinels = {
+    lists: [{ id: 'sentinel-list', name: 'sentinel-list' }],
+    cards: [{ id: 'sentinel-card', name: 'sentinel-card' }],
+    labels: [{ id: 'sentinel-label', name: 'sentinel-label' }],
+    members: [{ id: 'sentinel-member', fullName: 'sentinel-member' }],
+  };
+  if (!Object.prototype.hasOwnProperty.call(sentinels, category)) {
+    throw new Error(`Unknown app.temp category for sentinel seeding: ${category}`);
+  }
+  this._appTempSentinels = this._appTempSentinels || {};
+  this._appTempSentinels[category] = sentinels[category];
+  this.app.temp[category] = sentinels[category];
+});
+
+function assertSentinelSurvived(world, category) {
+  const sentinel = world._appTempSentinels && world._appTempSentinels[category];
   assert.ok(
-    this.app.temp.lists === undefined ||
-      (Array.isArray(this.app.temp.lists) && this.app.temp.lists.length === 0),
-    `Expected app.temp.lists to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.lists)}`,
+    sentinel,
+    `No sentinel recorded for app.temp.${category}; seed it first via "Given app.temp.${category} is seeded with sentinel data".`,
   );
+  assert.deepStrictEqual(
+    world.app.temp[category],
+    sentinel,
+    `Expected app.temp.${category} to still equal the seeded sentinel, got ${JSON.stringify(world.app.temp[category])}`,
+  );
+}
+
+Then('app.temp.lists is unchanged', function () {
+  assertSentinelSurvived(this, 'lists');
 });
 
 Then('app.temp.cards is unchanged', function () {
-  assert.ok(
-    this.app.temp.cards === undefined ||
-      (Array.isArray(this.app.temp.cards) && this.app.temp.cards.length === 0),
-    `Expected app.temp.cards to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.cards)}`,
-  );
+  assertSentinelSurvived(this, 'cards');
 });
 
 Then('app.temp.labels is unchanged', function () {
-  assert.ok(
-    this.app.temp.labels === undefined ||
-      (Array.isArray(this.app.temp.labels) && this.app.temp.labels.length === 0),
-    `Expected app.temp.labels to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.labels)}`,
-  );
+  assertSentinelSurvived(this, 'labels');
 });
 
 Then('app.temp.members is unchanged', function () {
-  assert.ok(
-    this.app.temp.members === undefined ||
-      (Array.isArray(this.app.temp.members) && this.app.temp.members.length === 0),
-    `Expected app.temp.members to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.members)}`,
-  );
+  assertSentinelSurvived(this, 'members');
+});
+
+// ---------------------------------------------------------------------------
+// Real request path: defer Trello.rest so we can drive success/failure
+// callbacks out of order and prove the version is threaded through
+// wrapApiCall (not just through direct *_success calls).
+// ---------------------------------------------------------------------------
+
+Given('Trello.rest defers all responses', function () {
+  this._capturedRest = [];
+  this.window.Trello.rest = (method, path, params, success, failure) => {
+    this._capturedRest.push({ method, path, params, success, failure });
+  };
+});
+
+When('getCards is called on the Trel instance with {string}', function (id) {
+  this.instance.getCards(id);
+});
+
+When('getLabels is called on the Trel instance with {string}', function (id) {
+  this.instance.getLabels(id);
+});
+
+When('getMembers is called on the Trel instance with {string}', function (id) {
+  this.instance.getMembers(id);
+});
+
+function ordinalToIndex(ordinal) {
+  const map = { '1st': 0, '2nd': 1, '3rd': 2, '4th': 3, '5th': 4 };
+  if (!(ordinal in map)) {
+    throw new Error(`Unsupported ordinal: ${ordinal}`);
+  }
+  return map[ordinal];
+}
+
+function captured(world, ordinal) {
+  const idx = ordinalToIndex(ordinal);
+  const entry = world._capturedRest && world._capturedRest[idx];
+  assert.ok(entry, `No captured Trello.rest entry at index ${idx}`);
+  return entry;
+}
+
+When(
+  'the {word} captured Trello.rest success is invoked with lists named {string}',
+  function (ordinal, name) {
+    captured(this, ordinal).success([{ id: `l-${ordinal}`, name }]);
+  },
+);
+
+When(
+  'the {word} captured Trello.rest success is invoked with cards named {string}',
+  function (ordinal, name) {
+    captured(this, ordinal).success([{ id: `c-${ordinal}`, name }]);
+  },
+);
+
+When(
+  'the {word} captured Trello.rest success is invoked with labels named {string}',
+  function (ordinal, name) {
+    captured(this, ordinal).success([{ id: `lb-${ordinal}`, name }]);
+  },
+);
+
+When(
+  'the {word} captured Trello.rest success is invoked with members named {string}',
+  function (ordinal, name) {
+    captured(this, ordinal).success([{ id: `m-${ordinal}`, fullName: name }]);
+  },
+);
+
+When('the {word} captured Trello.rest failure is invoked', function (ordinal) {
+  captured(this, ordinal).failure({ error: `failure-${ordinal}` });
+});
+
+Then('events.emit was not called with {string}', function (eventName) {
+  const calls = this.app.events.emit.mock.calls;
+  const found = calls.some((call) => {
+    const arg = call.arguments[0];
+    if (typeof arg === 'object' && arg && arg.type === eventName) return true;
+    if (typeof arg === 'string' && arg === eventName) return true;
+    return false;
+  });
+  assert.ok(!found, `Expected events.emit NOT to have been called with "${eventName}"`);
+});
+
+Then('the first card name is {string}', function (expected) {
+  assert.strictEqual(this.app.temp.cards[0].name, expected);
+});
+
+Then('the first label name is {string}', function (expected) {
+  assert.strictEqual(this.app.temp.labels[0].name, expected);
+});
+
+Then('the first member fullName is {string}', function (expected) {
+  assert.strictEqual(this.app.temp.members[0].fullName, expected);
 });

@@ -1,8 +1,8 @@
 # Wave 2: Race Condition Fixes -- Orchestration
 
 **Date**: 2026-04-15
-**Status**: TODO
-**Branch**: `fix/add-to-card`
+**Status**: PARTIAL (Lane 1 done 2026-04-24; Lanes 2 and 3 pending)
+**Branch**: `wave2/race-fixes` (off main; Wave 3 already merged via PR#138)
 **Depends on**: Waves 0-1 (done), analysis in
 [SwimlanesRaceConditionAnalysis](<2026-03-29_info_SwimlanesRaceConditionAnalysis.md>)
 and [TargetedRaceConditionFixes](<2026-03-29_info_TargetedRaceConditionFixes.md>)
@@ -11,14 +11,18 @@ and [TargetedRaceConditionFixes](<2026-03-29_info_TargetedRaceConditionFixes.md>
 
 Ship three small, independent fixes (~55 lines total) across three existing files
 to eliminate RACE-2, RACE-3, RACE-5, and the uncoordinated board-change cascade.
-No new classes. No orchestrator. These are prerequisites for Wave 3 (add-to-card).
+No new classes. No orchestrator.
+
+Originally framed as prerequisites for Wave 3 (add-to-card), but Wave 3 shipped
+first via PR#138 (2026-04-18). Wave 2 now hardens an already-live add-to-card
+path rather than gating it.
 
 ## Lanes (fully parallel)
 
 All three lanes are independent: different files, different concerns, no shared
 state. They can be implemented and tested simultaneously.
 
-* **[Lane 1: Version Counter](<2026-04-15_plan_todo_Wave2RaceConditionFixes_Lane1-VersionCounter.md>)**
+* **[Lane 1: Version Counter](<2026-04-15_plan_done_Wave2RaceConditionFixes_Lane1-VersionCounter.md>)** -- DONE 2026-04-24 (commit 952bf88)
   * File: `chrome_manifest_v3/class_trel.js`
   * Fixes: RACE-2 (stale board data), RACE-3 (stale cards)
   * ~20 lines new code
@@ -36,8 +40,9 @@ state. They can be implemented and tested simultaneously.
 
 ## Merge order
 
-Lanes merge independently to `fix/add-to-card`. No ordering constraints.
-Integration test at the end confirms all three work together.
+Lanes land independently on `wave2/race-fixes` (single PR back to main once all
+three lanes are in). No ordering constraints between lanes. Integration test at
+the end confirms all three work together.
 
 ## Integration smoke test (post-merge)
 
@@ -49,11 +54,12 @@ After all three lanes land, run the full Cucumber suite and verify:
 * Board cascade: UI updates only after all three API responses arrive for same board
 * Normal happy path still works: select board, list, card, submit
 
-## Sequencing with Wave 3
+## Sequencing with Wave 3 (retroactive)
 
-Wave 3 (add-to-card) depends on all three fixes being in place:
+Wave 3 (add-to-card) shipped first via PR#138 on 2026-04-18, inverting the
+original dependency. Wave 2 now hardens the live add-to-card path:
 
-* Version counter ensures card dropdown is trustworthy (Lane 1)
+* Version counter ensures card dropdown is trustworthy (Lane 1, done)
 * Submit guard prevents duplicate comments on existing cards (Lane 2)
 * Cascade tracker ensures consistent state at submit time (Lane 3)
 

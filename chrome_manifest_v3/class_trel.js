@@ -333,7 +333,7 @@ class Trel {
       `boards/${boardId}/lists`,
       {},
       (data) => this.getLists_success(data, version),
-      this.getLists_failure.bind(this),
+      (error) => this.getLists_failure(error, version),
     );
   }
 
@@ -359,8 +359,15 @@ class Trel {
   /**
    * Handles failed lists data retrieval
    * @param {object} error - Error data from Trello API
+   * @param {number} [version] - Captured version; failure is discarded if stale
    */
-  getLists_failure(error) {
+  getLists_failure(error, version) {
+    if (version !== undefined && !this._isCurrentVersion('lists', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale lists failure`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.errorPrefix} Failed to get lists data: ${JSON.stringify(
         error,
@@ -380,7 +387,7 @@ class Trel {
       `lists/${listId}/cards`,
       {},
       (data) => this.getCards_success(data, version),
-      this.getCards_failure.bind(this),
+      (error) => this.getCards_failure(error, version),
     );
   }
 
@@ -406,8 +413,15 @@ class Trel {
   /**
    * Handles failed cards data retrieval
    * @param {object} error - Error data from Trello API
+   * @param {number} [version] - Captured version; failure is discarded if stale
    */
-  getCards_failure(error) {
+  getCards_failure(error, version) {
+    if (version !== undefined && !this._isCurrentVersion('cards', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale cards failure`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.errorPrefix} Failed to get cards data: ${JSON.stringify(
         error,
@@ -427,7 +441,7 @@ class Trel {
       `boards/${boardId}/members`,
       {},
       (data) => this.getMembers_success(data, version),
-      this.getMembers_failure.bind(this),
+      (error) => this.getMembers_failure(error, version),
     );
   }
 
@@ -453,8 +467,15 @@ class Trel {
   /**
    * Handles failed members data retrieval
    * @param {object} error - Error data from Trello API
+   * @param {number} [version] - Captured version; failure is discarded if stale
    */
-  getMembers_failure(error) {
+  getMembers_failure(error, version) {
+    if (version !== undefined && !this._isCurrentVersion('members', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale members failure`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.errorPrefix} Failed to get members data: ${JSON.stringify(
         error,
@@ -474,7 +495,7 @@ class Trel {
       `boards/${boardId}/labels`,
       {},
       (data) => this.getLabels_success(data, version),
-      this.getLabels_failure.bind(this),
+      (error) => this.getLabels_failure(error, version),
     );
   }
 
@@ -500,8 +521,15 @@ class Trel {
   /**
    * Handles failed labels data retrieval
    * @param {object} error - Error data from Trello API
+   * @param {number} [version] - Captured version; failure is discarded if stale
    */
-  getLabels_failure(error) {
+  getLabels_failure(error, version) {
+    if (version !== undefined && !this._isCurrentVersion('labels', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale labels failure`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.errorPrefix} Failed to get labels data: ${JSON.stringify(
         error,
