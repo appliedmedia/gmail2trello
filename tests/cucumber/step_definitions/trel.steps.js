@@ -354,8 +354,8 @@ Given('app.temp.{word} is seeded with sentinel data', function (category) {
     throw new Error(`Unknown app.temp category for sentinel seeding: ${category}`);
   }
   this._appTempSentinels = this._appTempSentinels || {};
-  this._appTempSentinels[category] = sentinels[category];
-  this.app.temp[category] = sentinels[category];
+  this._appTempSentinels[category] = JSON.parse(JSON.stringify(sentinels[category]));
+  this.app.temp[category] = JSON.parse(JSON.stringify(sentinels[category]));
 });
 
 function assertSentinelSurvived(world, category) {

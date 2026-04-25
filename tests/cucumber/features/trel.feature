@@ -372,3 +372,33 @@ Feature: Trel Class
     Then app.temp.members is unchanged
     When the 2nd captured Trello.rest success is invoked with members named "boardB-fresh"
     Then the first member fullName is "boardB-fresh"
+
+  Scenario: getCards threads version through wrapApiCall (stale failure discarded)
+    Given trelloAuthorized is set to "true"
+    And Trello.rest defers all responses
+    When getCards is called on the Trel instance with "listA"
+    And getCards is called on the Trel instance with "listB"
+    And the 1st captured Trello.rest failure is invoked
+    Then events.emit was not called with "APIFail"
+    When the 2nd captured Trello.rest failure is invoked
+    Then events.emit was called with "APIFail"
+
+  Scenario: getLabels threads version through wrapApiCall (stale failure discarded)
+    Given trelloAuthorized is set to "true"
+    And Trello.rest defers all responses
+    When getLabels is called on the Trel instance with "boardA"
+    And getLabels is called on the Trel instance with "boardB"
+    And the 1st captured Trello.rest failure is invoked
+    Then events.emit was not called with "APIFail"
+    When the 2nd captured Trello.rest failure is invoked
+    Then events.emit was called with "APIFail"
+
+  Scenario: getMembers threads version through wrapApiCall (stale failure discarded)
+    Given trelloAuthorized is set to "true"
+    And Trello.rest defers all responses
+    When getMembers is called on the Trel instance with "boardA"
+    And getMembers is called on the Trel instance with "boardB"
+    And the 1st captured Trello.rest failure is invoked
+    Then events.emit was not called with "APIFail"
+    When the 2nd captured Trello.rest failure is invoked
+    Then events.emit was called with "APIFail"

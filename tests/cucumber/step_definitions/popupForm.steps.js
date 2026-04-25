@@ -796,9 +796,7 @@ Given('DOM with popup for submit complete', function () {
 
 When('displaySubmitCompleteForm is called on the popupForm', function () {
   try {
-    this.instance.displaySubmitCompleteForm({});
-    // Guard reset: simulate handleNewCardUploadsComplete also resetting the flag
-    this.instance._submitting = false;
+    this.instance.handleNewCardUploadsComplete(null, {});
     this.error = null;
   } catch (e) {
     this.error = e;
@@ -827,9 +825,7 @@ Given('DOM with popup for API failure', function () {
 
 When('displayAPIFailedForm is called on the popupForm', function () {
   try {
-    this.instance.displayAPIFailedForm({ status: 500, statusText: 'Test Error' });
-    // Guard reset: simulate handleAPIFail also resetting the flag
-    this.instance._submitting = false;
+    this.instance.handleAPIFail(null, { status: 500, statusText: 'Test Error' });
     this.error = null;
   } catch (e) {
     this.error = e;
@@ -852,7 +848,6 @@ Given('the PopupForm is ready for submit', function () {
   this.instance.displaySubmitCompleteForm = createMockFn();
   this.instance.displayAPIFailedForm = createMockFn();
 });
-
 
 Given('handleSubmit has been called once', function () {
   this.instance.handleSubmit();
@@ -879,19 +874,19 @@ When('handleAPIFail is called', function () {
 });
 
 When('handleCreateCardFailed is called', function () {
-  this.instance.handleCreateCardFailed(null, { status: 500, statusText: 'Test Error' });
+  this.instance.handleCreateCardFailed(null, {
+    status: 500,
+    statusText: 'Test Error',
+  });
 });
 
-// Dual-purpose step: as Given, ensures _submitting=true precondition;
-// as Then, asserts _submitting is true. Cucumber's step registry is
-// keyword-agnostic, so a single definition serves both contexts.
-defineStep('PopupForm._submitting is true', function () {
-  if (!this.instance._submitting) {
-    // Setup mode: also stub display methods so reset handlers can run
-    this.instance._submitting = true;
-    this.instance.displaySubmitCompleteForm = createMockFn();
-    this.instance.displayAPIFailedForm = createMockFn();
-  }
+Given('PopupForm has _submitting set to true', function () {
+  this.instance._submitting = true;
+  this.instance.displaySubmitCompleteForm = createMockFn();
+  this.instance.displayAPIFailedForm = createMockFn();
+});
+
+Then('PopupForm._submitting is true', function () {
   assert.strictEqual(this.instance._submitting, true);
 });
 

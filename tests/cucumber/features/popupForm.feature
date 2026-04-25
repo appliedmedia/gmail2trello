@@ -348,17 +348,17 @@ Feature: PopupForm Class
     Then model.submit was called exactly once
 
   Scenario: _submitting resets on newCardUploadsComplete
-    Given PopupForm._submitting is true
+    Given PopupForm has _submitting set to true
     When handleNewCardUploadsComplete is called
     Then PopupForm._submitting is false
 
   Scenario: _submitting resets on APIFail
-    Given PopupForm._submitting is true
+    Given PopupForm has _submitting set to true
     When handleAPIFail is called
     Then PopupForm._submitting is false
 
   Scenario: _submitting resets on createCard_failed
-    Given PopupForm._submitting is true
+    Given PopupForm has _submitting set to true
     When handleCreateCardFailed is called
     Then PopupForm._submitting is false
 

@@ -1,7 +1,7 @@
 # Wave 2: Race Condition Fixes -- Orchestration
 
 **Date**: 2026-04-15
-**Status**: PARTIAL (Lane 1 done 2026-04-24; Lanes 2 and 3 pending)
+**Status**: DONE (all three lanes merged on `wave2/race-fixes` 2026-04-25; PR#143)
 **Branch**: `wave2/race-fixes` (off main; Wave 3 already merged via PR#138)
 **Depends on**: Waves 0-1 (done), analysis in
 [SwimlanesRaceConditionAnalysis](<2026-03-29_info_SwimlanesRaceConditionAnalysis.md>)
@@ -22,17 +22,17 @@ path rather than gating it.
 All three lanes are independent: different files, different concerns, no shared
 state. They can be implemented and tested simultaneously.
 
-* **[Lane 1: Version Counter](<2026-04-15_plan_done_Wave2RaceConditionFixes_Lane1-VersionCounter.md>)** -- DONE 2026-04-24 (commit 952bf88)
+* **[Lane 1: Version Counter](<2026-04-15_plan_done_Wave2RaceConditionFixes_Lane1-VersionCounter.md>)** -- DONE 2026-04-24 (PR#143; later hardened to version failure callbacks per CodeRabbit feedback)
   * File: `chrome_manifest_v3/class_trel.js`
   * Fixes: RACE-2 (stale board data), RACE-3 (stale cards)
   * ~20 lines new code
   * Tests: `tests/cucumber/features/trel.feature`
-* **[Lane 2: Submit Guard](<2026-04-15_plan_todo_Wave2RaceConditionFixes_Lane2-SubmitGuard.md>)**
+* **[Lane 2: Submit Guard](<2026-04-15_plan_done_Wave2RaceConditionFixes_Lane2-SubmitGuard.md>)** -- DONE 2026-04-25 (commit 40ee82b)
   * File: `chrome_manifest_v3/views/class_popupForm.js`
   * Fixes: RACE-5 (double submit)
   * ~8 lines new code
   * Tests: `tests/cucumber/features/popupForm.feature`
-* **[Lane 3: Cascade Tracker](<2026-04-15_plan_todo_Wave2RaceConditionFixes_Lane3-CascadeTracker.md>)**
+* **[Lane 3: Cascade Tracker](<2026-04-15_plan_done_Wave2RaceConditionFixes_Lane3-CascadeTracker.md>)** -- DONE 2026-04-25 (commit d50a667)
   * File: `chrome_manifest_v3/class_model.js`
   * Fixes: uncoordinated board-change cascade (amplifies RACE-2 and RACE-4)
   * ~30 lines new code
