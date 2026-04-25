@@ -331,3 +331,40 @@ Feature: PopupForm Class
     And DOM with popup for API failure
     When displayAPIFailedForm is called on the popupForm
     Then the popupForm submitting is false
+
+  # --------------------------------------------------------------------------
+  # Submit guard (Wave 2 Lane 2)
+  # --------------------------------------------------------------------------
+
+  Scenario: handleSubmit sets _submitting to true
+    Given the PopupForm is ready for submit
+    When handleSubmit is called on the PopupForm
+    Then PopupForm._submitting is true
+
+  Scenario: Second handleSubmit while _submitting is blocked
+    Given the PopupForm is ready for submit
+    And handleSubmit has been called once
+    When handleSubmit is called again
+    Then model.submit was called exactly once
+
+  Scenario: _submitting resets on newCardUploadsComplete
+    Given PopupForm._submitting is true
+    When handleNewCardUploadsComplete is called
+    Then PopupForm._submitting is false
+
+  Scenario: _submitting resets on APIFail
+    Given PopupForm._submitting is true
+    When handleAPIFail is called
+    Then PopupForm._submitting is false
+
+  Scenario: _submitting resets on createCard_failed
+    Given PopupForm._submitting is true
+    When handleCreateCardFailed is called
+    Then PopupForm._submitting is false
+
+  Scenario: handleSubmit works again after success
+    Given the PopupForm is ready for submit
+    And handleSubmit has been called once
+    And handleNewCardUploadsComplete fires
+    When handleSubmit is called again
+    Then model.submit was called exactly twice
