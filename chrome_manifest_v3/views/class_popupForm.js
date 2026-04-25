@@ -24,6 +24,7 @@ class PopupForm {
     this.dataBound = false;
     this.pendingGmailData = null;
     this.lastGmailData = null;
+    this._submitting = false;
   }
 
   init() {
@@ -1039,6 +1040,9 @@ class PopupForm {
   }
 
   handleSubmit() {
+    if (this._submitting) return;
+    this._submitting = true;
+
     // Build the submission data object from app state
     const newCard = {
       emailId: this.app.temp.emailId,
@@ -1096,11 +1100,18 @@ class PopupForm {
   }
 
   handleAPIFail(target, params) {
+    this._submitting = false;
     this.displayAPIFailedForm(params);
   }
 
   handleNewCardUploadsComplete(target, params) {
+    this._submitting = false;
     this.displaySubmitCompleteForm(params);
+  }
+
+  handleCreateCardFailed(target, params) {
+    this._submitting = false;
+    this.displayAPIFailedForm(params);
   }
 
   handleOnMenuClick(target, params) {
@@ -1177,6 +1188,10 @@ class PopupForm {
     this.app.events.addListener(
       'newCardUploadsComplete',
       this.handleNewCardUploadsComplete.bind(this),
+    );
+    this.app.events.addListener(
+      'createCard_failed',
+      this.handleCreateCardFailed.bind(this),
     );
     this.app.events.addListener('menuClick', this.handleOnMenuClick.bind(this));
     this.app.events.addListener(

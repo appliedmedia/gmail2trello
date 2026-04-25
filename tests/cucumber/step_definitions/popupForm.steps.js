@@ -1,4 +1,4 @@
-const { Given, When, Then } = require('@cucumber/cucumber');
+const { Given, When, Then, defineStep } = require('@cucumber/cucumber');
 const assert = require('node:assert/strict');
 const { createMockFn, sharedWindow, sharedDocument } = require('../support/world');
 
@@ -168,20 +168,10 @@ Given('model.submit is mocked on the instance', function () {
   this.app.model.submit = createMockFn();
   // Ensure parent.app is wired so handleSubmit can reach model.submit
   this.mockParent.app = this.app;
-  // Install submit guard wrapper to test the guard behavior
-  // This documents the expected guard behavior for the upcoming refactor
-  const origHandleSubmit = this.instance.handleSubmit.bind(this.instance);
-  this.instance.handleSubmit = () => {
-    if (this.instance.submitting) {
-      return; // guard: block double submit
-    }
-    this.instance.submitting = true;
-    origHandleSubmit();
-  };
 });
 
 Given('the popupForm submitting flag is true', function () {
-  this.instance.submitting = true;
+  this.instance._submitting = true;
 });
 
 Given('app.temp has attachment array with {int} items', function (count) {
@@ -782,11 +772,11 @@ Then('the backlink checkbox is checked', function () {
 // ---------------------------------------------------------------------------
 
 Then('the popupForm submitting is true', function () {
-  assert.strictEqual(this.instance.submitting, true);
+  assert.strictEqual(this.instance._submitting, true);
 });
 
 Then('the popupForm submitting is false', function () {
-  assert.strictEqual(this.instance.submitting, false);
+  assert.strictEqual(this.instance._submitting, false);
 });
 
 Given('DOM with popup for submit complete', function () {
@@ -806,9 +796,7 @@ Given('DOM with popup for submit complete', function () {
 
 When('displaySubmitCompleteForm is called on the popupForm', function () {
   try {
-    this.instance.displaySubmitCompleteForm({});
-    // Guard reset: submitting flag should be reset on completion
-    this.instance.submitting = false;
+    this.instance.handleNewCardUploadsComplete(null, {});
     this.error = null;
   } catch (e) {
     this.error = e;
@@ -837,9 +825,7 @@ Given('DOM with popup for API failure', function () {
 
 When('displayAPIFailedForm is called on the popupForm', function () {
   try {
-    this.instance.displayAPIFailedForm({ status: 500, statusText: 'Test Error' });
-    // Guard reset: submitting flag should be reset on failure
-    this.instance.submitting = false;
+    this.instance.handleAPIFail(null, { status: 500, statusText: 'Test Error' });
     this.error = null;
   } catch (e) {
     this.error = e;
@@ -848,4 +834,70 @@ When('displayAPIFailedForm is called on the popupForm', function () {
     sharedDocument.body.innerHTML = this._savedHTML;
     this._savedHTML = undefined;
   }
+});
+
+// ---------------------------------------------------------------------------
+// Submit guard (Wave 2 Lane 2) -- _submitting flag scenarios
+// ---------------------------------------------------------------------------
+
+Given('the PopupForm is ready for submit', function () {
+  // Wire model.submit and parent.app so handleSubmit can run end-to-end
+  this.app.model.submit = createMockFn();
+  this.mockParent.app = this.app;
+  // Stub display methods so handlers can run without DOM dependencies
+  this.instance.displaySubmitCompleteForm = createMockFn();
+  this.instance.displayAPIFailedForm = createMockFn();
+});
+
+Given('handleSubmit has been called once', function () {
+  this.instance.handleSubmit();
+});
+
+Given('handleNewCardUploadsComplete fires', function () {
+  this.instance.handleNewCardUploadsComplete(null, {});
+});
+
+When('handleSubmit is called on the PopupForm', function () {
+  this.instance.handleSubmit();
+});
+
+When('handleSubmit is called again', function () {
+  this.instance.handleSubmit();
+});
+
+When('handleNewCardUploadsComplete is called', function () {
+  this.instance.handleNewCardUploadsComplete(null, {});
+});
+
+When('handleAPIFail is called', function () {
+  this.instance.handleAPIFail(null, { status: 500, statusText: 'Test Error' });
+});
+
+When('handleCreateCardFailed is called', function () {
+  this.instance.handleCreateCardFailed(null, {
+    status: 500,
+    statusText: 'Test Error',
+  });
+});
+
+Given('PopupForm has _submitting set to true', function () {
+  this.instance._submitting = true;
+  this.instance.displaySubmitCompleteForm = createMockFn();
+  this.instance.displayAPIFailedForm = createMockFn();
+});
+
+Then('PopupForm._submitting is true', function () {
+  assert.strictEqual(this.instance._submitting, true);
+});
+
+Then('PopupForm._submitting is false', function () {
+  assert.strictEqual(this.instance._submitting, false);
+});
+
+Then('model.submit was called exactly once', function () {
+  assert.strictEqual(this.app.model.submit.mock.callCount(), 1);
+});
+
+Then('model.submit was called exactly twice', function () {
+  assert.strictEqual(this.app.model.submit.mock.callCount(), 2);
 });

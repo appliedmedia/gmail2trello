@@ -578,3 +578,27 @@ Then('the loadTrelloCards spy was called with {string}', function (expected) {
 Then('the loadTrelloCards spy was called {int} times', function (count) {
   assert.strictEqual(this._loadTrelloCardsSpy.mock.callCount(), count);
 });
+
+// ---------------------------------------------------------------------------
+// Board load cascade tracker steps (Wave 2 Lane 3)
+// ---------------------------------------------------------------------------
+
+Given('handleBoardChanged was called with boardId {string}', function (boardId) {
+  this.instance.handleBoardChanged({}, { boardId });
+});
+
+When('_completeBoardLoadPart is called with {string} and {string}', function (part, boardId) {
+  this.instance._completeBoardLoadPart(part, boardId);
+});
+
+Then('Model._boardLoadId is {string}', function (expected) {
+  assert.strictEqual(this.instance._boardLoadId, expected);
+});
+
+Then('Model._boardLoadPending has {int} items', function (count) {
+  const pending = this.instance._boardLoadPending;
+  assert.ok(pending && typeof pending.size === 'number',
+    'Expected _boardLoadPending to be a Set-like object with a size property');
+  assert.strictEqual(pending.size, count,
+    `Expected _boardLoadPending to have ${count} items, got ${pending.size}`);
+});

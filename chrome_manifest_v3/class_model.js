@@ -407,6 +407,9 @@ class Model {
     // Initialize Trello API abstraction
     this.trel = new G2T.Trel({ app: this.app });
     this.initialized = false;
+    // Board-load cascade tracker (Wave 2 Lane 3)
+    this._boardLoadId = null;
+    this._boardLoadPending = null;
   }
 
   init() {
@@ -678,10 +681,25 @@ class Model {
   // Form event handlers - moved from PopupView
   handleBoardChanged(target, params) {
     const boardId = params.boardId;
-    if (boardId !== '_' && boardId !== '' && boardId !== null) {
-      this.loadTrelloLists(boardId);
-      this.loadTrelloLabels(boardId);
-      this.loadTrelloMembers(boardId);
+    if (boardId === '_' || boardId === '' || boardId === null) return;
+
+    // Reset tracking for new board (Wave 2 Lane 3 cascade tracker)
+    this._boardLoadId = boardId;
+    this._boardLoadPending = new Set(['lists', 'labels', 'members']);
+
+    this.loadTrelloLists(boardId);
+    this.loadTrelloLabels(boardId);
+    this.loadTrelloMembers(boardId);
+  }
+
+  _completeBoardLoadPart(part, boardId) {
+    if (boardId !== this._boardLoadId) return;
+    if (!this._boardLoadPending) return;
+
+    this._boardLoadPending.delete(part);
+    if (this._boardLoadPending.size === 0) {
+      this._boardLoadPending = null;
+      this.app.events.emit('boardDataReady', { boardId });
     }
   }
 
@@ -724,6 +742,20 @@ class Model {
     this.app.events.addListener(
       'checkTrelloAuthorized_success',
       this.handleCheckTrelloAuthorized_success.bind(this),
+    );
+
+    // Wave 2 Lane 3: drive cascade tracker from Trel success events
+    this.app.events.addListener(
+      'loadTrelloLists_success',
+      () => this._completeBoardLoadPart('lists', this._boardLoadId),
+    );
+    this.app.events.addListener(
+      'loadTrelloLabels_success',
+      () => this._completeBoardLoadPart('labels', this._boardLoadId),
+    );
+    this.app.events.addListener(
+      'loadTrelloMembers_success',
+      () => this._completeBoardLoadPart('members', this._boardLoadId),
     );
   }
 

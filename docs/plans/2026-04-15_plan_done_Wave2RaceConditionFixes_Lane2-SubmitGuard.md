@@ -1,7 +1,7 @@
 # Lane 2: Submit Guard in class_popupForm.js
 
 **Date**: 2026-04-15
-**Status**: TODO
+**Status**: DONE (2026-04-25)
 **File**: `chrome_manifest_v3/views/class_popupForm.js`
 **Fixes**: RACE-5 (double submit creates duplicate cards)
 
