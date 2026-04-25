@@ -18,12 +18,35 @@ class Trel {
 
   constructor({ app } = {}) {
     this.app = app;
+    this._requestVersions = { lists: 0, cards: 0, labels: 0, members: 0 };
     this.bindEvents();
   }
 
   bindEvents() {
     // No specific events to bind for Trello API
     // Events will be handled through the app's event system
+  }
+
+  /**
+   * Increments and returns the version counter for a fetch category.
+   * Used to discard stale API responses when rapid user actions cause
+   * overlapping requests for the same category (lists/cards/labels/members).
+   * @param {string} category - One of 'lists', 'cards', 'labels', 'members'
+   * @returns {number} The new current version for the category
+   */
+  _nextVersion(category) {
+    return ++this._requestVersions[category];
+  }
+
+  /**
+   * Returns true iff the given version is still the current version for the
+   * category, i.e. no newer same-category request has been issued since.
+   * @param {string} category - One of 'lists', 'cards', 'labels', 'members'
+   * @param {number} version - Version captured when the request was issued
+   * @returns {boolean}
+   */
+  _isCurrentVersion(category, version) {
+    return this._requestVersions[category] === version;
   }
 
   /**
@@ -304,11 +327,12 @@ class Trel {
    * @param {string} boardId - The board ID
    */
   getLists(boardId) {
+    const version = this._nextVersion('lists');
     this.wrapApiCall(
       'get',
       `boards/${boardId}/lists`,
       {},
-      this.getLists_success.bind(this),
+      (data) => this.getLists_success(data, version),
       this.getLists_failure.bind(this),
     );
   }
@@ -316,8 +340,15 @@ class Trel {
   /**
    * Handles successful lists data retrieval
    * @param {object} data - Lists data from Trello API
+   * @param {number} [version] - Captured version; response is discarded if stale
    */
-  getLists_success(data) {
+  getLists_success(data, version) {
+    if (version !== undefined && !this._isCurrentVersion('lists', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale lists response`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.apiCallPrefix} Lists data retrieved successfully`,
     );
@@ -343,11 +374,12 @@ class Trel {
    * @param {string} listId - The list ID
    */
   getCards(listId) {
+    const version = this._nextVersion('cards');
     this.wrapApiCall(
       'get',
       `lists/${listId}/cards`,
       {},
-      this.getCards_success.bind(this),
+      (data) => this.getCards_success(data, version),
       this.getCards_failure.bind(this),
     );
   }
@@ -355,8 +387,15 @@ class Trel {
   /**
    * Handles successful cards data retrieval
    * @param {object} data - Cards data from Trello API
+   * @param {number} [version] - Captured version; response is discarded if stale
    */
-  getCards_success(data) {
+  getCards_success(data, version) {
+    if (version !== undefined && !this._isCurrentVersion('cards', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale cards response`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.apiCallPrefix} Cards data retrieved successfully`,
     );
@@ -382,11 +421,12 @@ class Trel {
    * @param {string} boardId - The board ID
    */
   getMembers(boardId) {
+    const version = this._nextVersion('members');
     this.wrapApiCall(
       'get',
       `boards/${boardId}/members`,
       {},
-      this.getMembers_success.bind(this),
+      (data) => this.getMembers_success(data, version),
       this.getMembers_failure.bind(this),
     );
   }
@@ -394,8 +434,15 @@ class Trel {
   /**
    * Handles successful members data retrieval
    * @param {object} data - Members data from Trello API
+   * @param {number} [version] - Captured version; response is discarded if stale
    */
-  getMembers_success(data) {
+  getMembers_success(data, version) {
+    if (version !== undefined && !this._isCurrentVersion('members', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale members response`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.apiCallPrefix} Members data retrieved successfully`,
     );
@@ -421,11 +468,12 @@ class Trel {
    * @param {string} boardId - The board ID
    */
   getLabels(boardId) {
+    const version = this._nextVersion('labels');
     this.wrapApiCall(
       'get',
       `boards/${boardId}/labels`,
       {},
-      this.getLabels_success.bind(this),
+      (data) => this.getLabels_success(data, version),
       this.getLabels_failure.bind(this),
     );
   }
@@ -433,8 +481,15 @@ class Trel {
   /**
    * Handles successful labels data retrieval
    * @param {object} data - Labels data from Trello API
+   * @param {number} [version] - Captured version; response is discarded if stale
    */
-  getLabels_success(data) {
+  getLabels_success(data, version) {
+    if (version !== undefined && !this._isCurrentVersion('labels', version)) {
+      this.app.utils.log(
+        `${this.ck.apiCallPrefix} Discarding stale labels response`,
+      );
+      return;
+    }
     this.app.utils.log(
       `${this.ck.apiCallPrefix} Labels data retrieved successfully`,
     );

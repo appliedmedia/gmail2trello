@@ -291,3 +291,83 @@ When('getLists_success is called with lists named {string}', function (name) {
 Then('the first list name is {string}', function (expected) {
   assert.strictEqual(this.app.temp.lists[0].name, expected);
 });
+
+// ---------------------------------------------------------------------------
+// Version-counter steps (Wave 2, Lane 1)
+// ---------------------------------------------------------------------------
+
+When('_nextVersion is called with {string} on Trel', function (category) {
+  this._lastVersion = this.instance._nextVersion(category);
+});
+
+Then('the {string} version on Trel is {int}', function (category, expected) {
+  assert.strictEqual(this.instance._requestVersions[category], expected);
+});
+
+Then(
+  '_isCurrentVersion for {string} with version {int} on Trel is {word}',
+  function (category, version, expected) {
+    const actual = this.instance._isCurrentVersion(category, version);
+    assert.strictEqual(actual, expected === 'true');
+  },
+);
+
+When(
+  'getLists_success is called with lists named {string} and version {int} on Trel',
+  function (name, version) {
+    this.instance.getLists_success([{ id: 'l-1', name }], version);
+  },
+);
+
+When(
+  'getCards_success is called with cards named {string} and version {int} on Trel',
+  function (name, version) {
+    this.instance.getCards_success([{ id: 'c-1', name }], version);
+  },
+);
+
+When(
+  'getLabels_success is called with labels named {string} and version {int} on Trel',
+  function (name, version) {
+    this.instance.getLabels_success([{ id: 'lb-1', name }], version);
+  },
+);
+
+When(
+  'getMembers_success is called with members named {string} and version {int} on Trel',
+  function (name, version) {
+    this.instance.getMembers_success([{ id: 'm-1', fullName: name }], version);
+  },
+);
+
+Then('app.temp.lists is unchanged', function () {
+  assert.ok(
+    this.app.temp.lists === undefined ||
+      (Array.isArray(this.app.temp.lists) && this.app.temp.lists.length === 0),
+    `Expected app.temp.lists to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.lists)}`,
+  );
+});
+
+Then('app.temp.cards is unchanged', function () {
+  assert.ok(
+    this.app.temp.cards === undefined ||
+      (Array.isArray(this.app.temp.cards) && this.app.temp.cards.length === 0),
+    `Expected app.temp.cards to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.cards)}`,
+  );
+});
+
+Then('app.temp.labels is unchanged', function () {
+  assert.ok(
+    this.app.temp.labels === undefined ||
+      (Array.isArray(this.app.temp.labels) && this.app.temp.labels.length === 0),
+    `Expected app.temp.labels to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.labels)}`,
+  );
+});
+
+Then('app.temp.members is unchanged', function () {
+  assert.ok(
+    this.app.temp.members === undefined ||
+      (Array.isArray(this.app.temp.members) && this.app.temp.members.length === 0),
+    `Expected app.temp.members to be unchanged (undefined or empty), got ${JSON.stringify(this.app.temp.members)}`,
+  );
+});

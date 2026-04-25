@@ -1,7 +1,7 @@
 # Lane 1: Version Counter in class_trel.js
 
 **Date**: 2026-04-15
-**Status**: TODO
+**Status**: DONE (2026-04-24, branch `wave2/race-fixes`)
 **File**: `chrome_manifest_v3/class_trel.js`
 **Fixes**: RACE-2 (stale board data on rapid switch),
 RACE-3 (stale cards on rapid list switch)

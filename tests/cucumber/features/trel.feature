@@ -221,28 +221,88 @@ Feature: Trel Class
     And the createCard_success event data has cardId "card-999"
 
   # ------------------------------------------------------------------
-  # Version Counter for Stale Response Discard (baseline tests)
-  # These document current behavior: there is NO versioning yet,
-  # so stale responses are NOT discarded. These are baseline tests
-  # documenting the race condition before a future fix.
+  # Unversioned Success Callbacks (direct-invocation path)
+  # The version parameter is optional on *_success handlers so that
+  # tests and any callers outside the fetch path still work. When no
+  # version is passed, no staleness check runs: last write wins.
   # ------------------------------------------------------------------
 
-  Scenario: two sequential getLists calls both update temp.lists (no versioning yet)
-    # Baseline: both callbacks overwrite temp.lists; the last one wins
+  Scenario: two sequential getLists calls both update temp.lists when no version is passed
     When getLists_success is called with lists data on Trel
     And getLists_success is called with 1 list on Trel
     Then app.temp.lists has 1 items
 
-  Scenario: two sequential getCards calls both update temp.cards (no versioning yet)
-    # Baseline: both callbacks overwrite temp.cards; the last one wins
+  Scenario: two sequential getCards calls both update temp.cards when no version is passed
     When getCards_success is called with cards data on Trel
     And getCards_success is called with 1 card on Trel
     Then app.temp.cards has 1 items
 
-  Scenario: rapid board switch does not prevent stale data (documenting the race condition)
-    # Baseline: if board A lists arrive after board B lists, board A data overwrites board B
-    # This documents the current broken behavior before versioning is added
+  Scenario: unversioned calls do not guard against stale ordering
     Given trelloAuthorized is set to "true"
     When getLists_success is called with lists named "boardB-list"
     And getLists_success is called with lists named "boardA-list-stale"
     Then the first list name is "boardA-list-stale"
+
+  # ------------------------------------------------------------------
+  # Request Versioning (Wave 2, Lane 1)
+  # Fetch methods capture a version; success callbacks discard
+  # responses whose captured version is no longer current.
+  # ------------------------------------------------------------------
+
+  Scenario: _nextVersion increments counter for category
+    When _nextVersion is called with "lists" on Trel
+    Then the "lists" version on Trel is 1
+    When _nextVersion is called with "lists" on Trel
+    Then the "lists" version on Trel is 2
+
+  Scenario: _isCurrentVersion returns true for latest version
+    When _nextVersion is called with "cards" on Trel
+    Then _isCurrentVersion for "cards" with version 1 on Trel is true
+
+  Scenario: _isCurrentVersion returns false for stale version
+    When _nextVersion is called with "cards" on Trel
+    And _nextVersion is called with "cards" on Trel
+    Then _isCurrentVersion for "cards" with version 1 on Trel is false
+    And _isCurrentVersion for "cards" with version 2 on Trel is true
+
+  Scenario: Independent categories do not affect each other
+    When _nextVersion is called with "lists" on Trel
+    And _nextVersion is called with "cards" on Trel
+    Then _isCurrentVersion for "lists" with version 1 on Trel is true
+    And _isCurrentVersion for "cards" with version 1 on Trel is true
+
+  Scenario: getLists_success with current version updates temp.lists
+    Given _nextVersion is called with "lists" on Trel
+    When getLists_success is called with lists named "boardA" and version 1 on Trel
+    Then the first list name is "boardA"
+
+  Scenario: getLists_success with stale version discards response
+    Given _nextVersion is called with "lists" on Trel
+    And _nextVersion is called with "lists" on Trel
+    When getLists_success is called with lists named "stale" and version 1 on Trel
+    Then app.temp.lists is unchanged
+
+  Scenario: Rapid getLists responses: only the latest version wins
+    When _nextVersion is called with "lists" on Trel
+    And _nextVersion is called with "lists" on Trel
+    And getLists_success is called with lists named "boardA-stale" and version 1 on Trel
+    And getLists_success is called with lists named "boardB-fresh" and version 2 on Trel
+    Then the first list name is "boardB-fresh"
+
+  Scenario: getCards_success with stale version discards response
+    Given _nextVersion is called with "cards" on Trel
+    And _nextVersion is called with "cards" on Trel
+    When getCards_success is called with cards named "stale" and version 1 on Trel
+    Then app.temp.cards is unchanged
+
+  Scenario: getLabels_success with stale version discards response
+    Given _nextVersion is called with "labels" on Trel
+    And _nextVersion is called with "labels" on Trel
+    When getLabels_success is called with labels named "stale" and version 1 on Trel
+    Then app.temp.labels is unchanged
+
+  Scenario: getMembers_success with stale version discards response
+    Given _nextVersion is called with "members" on Trel
+    And _nextVersion is called with "members" on Trel
+    When getMembers_success is called with members named "stale" and version 1 on Trel
+    Then app.temp.members is unchanged
