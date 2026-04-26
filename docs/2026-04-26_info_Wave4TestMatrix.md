@@ -59,10 +59,10 @@ has at least one board with a few lists and cards.
 
 ## Privacy (UA removal surface)
 
-* [ ] With DevTools Network tab open, exercise the extension end-to-end.
-* [ ] Filter for `google-analytics`; confirm zero requests.
-* [ ] Filter for `analytics.google.com`; confirm zero requests.
-* [ ] Only Trello (`api.trello.com`, `trello.com`) and Gmail traffic should appear from the extension's activity.
+* [ ] Open DevTools for the extension context (popup + service worker), then exercise the extension end-to-end.
+* [ ] In Network, filter by Initiator = extension ID, so Gmail page traffic does not pollute results.
+* [ ] Confirm zero extension-initiated requests to telemetry hosts: `google-analytics.com`, `analytics.google.com`, `googletagmanager.com`, `doubleclick.net`.
+* [ ] Confirm extension-initiated requests hit only expected hosts for this flow (Trello plus Gmail attachment-fetch hosts used by the extension).
 
 ## Sign-off
 

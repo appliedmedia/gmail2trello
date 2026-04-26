@@ -18,14 +18,14 @@ to `main` since then, and none of that is reflected in the version string.
 Pick a target version before editing. Candidates, in order of how big a
 signal they send to users:
 
-* `3.2.0.000`. Recommended. Adds material new behavior: `gmail.js`
+* `3.2.0.001`. Selected. Adds material new behavior: `gmail.js`
   event-driven detection (Wave 1), add-to-existing-card restored (Wave 3),
   race-condition hardening (Wave 2), Universal Analytics removed.
 * `3.1.1.000`. Defensible if treating Waves 0-3 as bug-fix-shaped and the
   UA removal as cleanup.
 * `3.1.0.002`. Not recommended; understates the change set.
 
-Default to `3.2.0.000` unless the user specifies otherwise.
+User selected `3.2.0.001` on 2026-04-26.
 
 ## Steps
 

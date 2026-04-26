@@ -8,7 +8,7 @@
 * Remove the embedded Universal Analytics SDK and the dead telemetry code paths it fed; the extension itself sends no usage analytics
 * Add a third-party-notices file documenting bundled libraries
 * Migrate to Cucumber as the sole test runner; remove Jest and node:test; suite covers 653 scenarios
-* Bump devDependencies: @cucumber/cucumber 12.7.0 to 12.8.2, prettier 3.8.1 to 3.8.3, globals 17.3.0 to 17.5.0, eslint 10.0.0 to 10.0.3, jsdom 27.4.0 to 29.0.0; security bump for flatted
+* Bump devDependencies: @cucumber/cucumber 12.7.0 to 12.8.2, prettier 3.8.1 to 3.8.3, globals 17.3.0 to 17.5.0, eslint 10.0.0 to 10.1.0, jsdom 27.4.0 to 29.0.2; security bump for flatted
 
 === 3.1.0.000@2025-01-27 ===
 
