@@ -283,6 +283,30 @@
 }
 
 /* ============================================
+   Long-form Legal Content
+   Restores readable lists and spacing inside narrow legal sections.
+   Targets any section under #legal-* (set via id naming in config.yaml)
+   so per-site overrides automatically inherit the layout.
+   ============================================ */
+section[id^="legal-"] .container-narrow ul,
+section[id^="legal-"] .container-narrow ol {
+  margin: 0 0 var(--space-md) var(--space-xl);
+  padding-left: var(--space-md);
+}
+
+section[id^="legal-"] .container-narrow li {
+  margin-bottom: var(--space-sm);
+}
+
+section[id^="legal-"] .container-narrow h2 {
+  margin-bottom: var(--space-lg);
+}
+
+section[id^="legal-"] .container-narrow h3 {
+  margin-top: var(--space-xl);
+}
+
+/* ============================================
    Navbar scroll behavior
    ============================================ */
 .nav {
