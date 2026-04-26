@@ -75,12 +75,10 @@ class PopupForm {
       if (!$element.length) {
         return;
       }
-      $element
-        .off('change.g2tPopupForm')
-        .on('change.g2tPopupForm', () => {
-          this.app.persist[key] = $element.is(':checked');
-          this.updateBody();
-        });
+      $element.off('change.g2tPopupForm').on('change.g2tPopupForm', () => {
+        this.app.persist[key] = $element.is(':checked');
+        this.updateBody();
+      });
     };
 
     bindToggle('#chkBackLink', 'useBackLink');
