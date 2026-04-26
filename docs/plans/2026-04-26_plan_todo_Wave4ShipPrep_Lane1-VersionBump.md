@@ -7,11 +7,11 @@
 
 ## Problem
 
-The repo currently advertises `3.1.0.001` in both `manifest.json` and
-`package.json`, but `CHANGES.md` only documents up to `3.1.0.000@2025-01-27`.
-No public release was cut for `3.1.0.001`, so that string is effectively a
-placeholder. Waves 0-3 plus the Universal Analytics removal have all merged
-to `main` since then, and none of that is reflected in the version string.
+At lane start, the repo advertised `3.1.0.001` in both `manifest.json` and
+`package.json`, while `CHANGES.md` documented up to `3.1.0.000@2025-01-27`.
+No public release was cut for `3.1.0.001`, so that string was effectively a
+placeholder. Waves 0-3 plus the Universal Analytics removal had all merged
+to `main` since then, and none of that was reflected in the version string.
 
 ## Decision needed
 
