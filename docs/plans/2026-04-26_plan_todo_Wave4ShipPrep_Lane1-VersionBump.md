@@ -37,14 +37,14 @@ User selected `3.2.0.001` on 2026-04-26.
   Use the lock-only form so the lane cannot accidentally pull semver-range
   upgrades into the release.
 * Run `npm run check` (lint + format check). Should pass with no diff.
-* Run `npm test` (Cucumber). Should pass; current baseline is 653 scenarios.
+* Run `npm test` (Cucumber). Should pass; baseline at lane time (2026-04-26) was 653 scenarios.
 
 ## Acceptance
 
 * `manifest.json`, `package.json`, and `package-lock.json` all carry the
   same version string.
 * `npm run check` exits 0.
-* `npm test` exits 0 with all 653 scenarios passing.
+* `npm test` exits 0 with all scenarios passing (baseline at lane time: 653).
 * No other files modified by this lane.
 
 ## Out of scope
