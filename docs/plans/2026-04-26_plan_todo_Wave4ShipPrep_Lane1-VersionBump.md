@@ -32,8 +32,10 @@ User selected `3.2.0.001` on 2026-04-26.
 * Edit `chrome_manifest_v3/manifest.json`: change `"version"` to the agreed
   string.
 * Edit `package.json`: change `"version"` to match.
-* Run `npm install --package-lock-only` (or `npm install`) to refresh
+* Run `npm install --package-lock-only` to refresh
   `package-lock.json` so the top-level `version` field there matches.
+  Use the lock-only form so the lane cannot accidentally pull semver-range
+  upgrades into the release.
 * Run `npm run check` (lint + format check). Should pass with no diff.
 * Run `npm test` (Cucumber). Should pass; current baseline is 653 scenarios.
 
