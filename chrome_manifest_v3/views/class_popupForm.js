@@ -25,6 +25,8 @@ class PopupForm {
     this.pendingGmailData = null;
     this.lastGmailData = null;
     this._submitting = false;
+    // AbortControllers for namespaced event-listener groups
+    this.controllers = {};
   }
 
   init() {
@@ -69,16 +71,27 @@ class PopupForm {
     if (!$popup || !$popup.length) {
       return;
     }
+    const popup = this.parent.$popup[0];
 
     const bindToggle = (selector, key) => {
-      const $element = $(selector, $popup);
-      if (!$element.length) {
+      const element = popup.querySelector(selector);
+      if (!element) {
         return;
       }
-      $element.off('change.g2tPopupForm').on('change.g2tPopupForm', () => {
-        this.app.persist[key] = $element.is(':checked');
-        this.updateBody();
-      });
+      // Abort any prior listener for this selector, then re-bind
+      const ctrlKey = 'change_' + key;
+      if (this.controllers[ctrlKey]) {
+        this.controllers[ctrlKey].abort();
+      }
+      this.controllers[ctrlKey] = new AbortController();
+      element.addEventListener(
+        'change',
+        () => {
+          this.app.persist[key] = element.checked;
+          this.updateBody();
+        },
+        { signal: this.controllers[ctrlKey].signal },
+      );
     };
 
     bindToggle('#chkBackLink', 'useBackLink');
@@ -96,22 +109,41 @@ class PopupForm {
     if (!$popup || !$popup.length) {
       return;
     }
+    const popup = this.parent.$popup[0];
 
-    $popup
-      .off('keyup.g2tCheckbox', '.g2t-checkbox')
-      .on('keyup.g2tCheckbox', '.g2t-checkbox', evt => {
-        if (evt.which === 13 || evt.which === 32) {
-          $(evt.target).trigger('click');
+    // Abort prior keyup handler, then re-bind
+    if (this.controllers.keyupCheckbox) {
+      this.controllers.keyupCheckbox.abort();
+    }
+    this.controllers.keyupCheckbox = new AbortController();
+    popup.addEventListener(
+      'keyup',
+      evt => {
+        if (evt.target.matches('.g2t-checkbox')) {
+          if (evt.which === 13 || evt.which === 32) {
+            evt.target.click();
+          }
         }
-      });
+      },
+      { signal: this.controllers.keyupCheckbox.signal },
+    );
 
-    $popup
-      .off('keydown.g2tCheckbox', '.g2t-checkbox')
-      .on('keydown.g2tCheckbox', '.g2t-checkbox', evt => {
-        if (evt.which === 13 || evt.which === 32) {
-          $(evt.target).trigger('mousedown');
+    // Abort prior keydown handler, then re-bind
+    if (this.controllers.keydownCheckbox) {
+      this.controllers.keydownCheckbox.abort();
+    }
+    this.controllers.keydownCheckbox = new AbortController();
+    popup.addEventListener(
+      'keydown',
+      evt => {
+        if (evt.target.matches('.g2t-checkbox')) {
+          if (evt.which === 13 || evt.which === 32) {
+            evt.target.dispatchEvent(new Event('mousedown'));
+          }
         }
-      });
+      },
+      { signal: this.controllers.keydownCheckbox.signal },
+    );
 
     this.accessibilityHandlersBound = true;
   }
@@ -124,12 +156,16 @@ class PopupForm {
     if (!$popup || !$popup.length) {
       return;
     }
+    const popup = this.parent.$popup[0];
 
     const setChecked = (selector, value) => {
       if (value === undefined) {
         return;
       }
-      $(selector, $popup).prop('checked', !!value);
+      const el = popup.querySelector(selector);
+      if (el) {
+        el.checked = !!value;
+      }
     };
 
     const { useBackLink, addCC, markdown } = this.app.persist;
@@ -156,7 +192,7 @@ class PopupForm {
     this.updateBoards();
 
     if (this.parent.$popupContent) {
-      this.parent.$popupContent.show();
+      this.parent.$popupContent[0].style.display = '';
     }
     this.hideMessage();
   }
@@ -197,16 +233,21 @@ class PopupForm {
     **/
 
   bindData(data) {
-    $('.header a').each(() => {
-      $(document).on('keyup', $(this), evt => {
+    const popup = this.parent.$popup[0];
+
+    for (const _a of document.querySelectorAll('.header a')) {
+      document.addEventListener('keyup', evt => {
         if (evt.which == 13 || evt.which == 32) {
-          $(evt.target).trigger('click');
+          evt.target.click();
         }
       });
-    });
-    $('#g2tSignOutButton', this.parent.$popup).on('click', () => {
-      this.parent.showSignOutOptions();
-    });
+    }
+    const signOutBtn = popup.querySelector('#g2tSignOutButton');
+    if (signOutBtn) {
+      signOutBtn.addEventListener('click', () => {
+        this.parent.showSignOutOptions();
+      });
+    }
 
     try {
       chrome.storage.sync.get('dueShortcuts', response => {
@@ -244,30 +285,29 @@ class PopupForm {
 
         const due = JSON.parse(response.dueShortcuts || dueShortcuts_k);
 
-        const $g2t = $('#g2tDue_Shortcuts', this.parent.$popup);
-        $g2t.html(''); // Clear it.
+        const g2t = popup.querySelector('#g2tDue_Shortcuts');
+        g2t.replaceChildren();
 
-        let opt =
-          '<option value="none" selected disabled hidden>-</option>' +
-          '<option value="d=0 am=0">--</option>';
+        // Build option elements natively (no HTML strings)
+        const placeholderOpt = new Option('-', 'none');
+        placeholderOpt.selected = true;
+        placeholderOpt.disabled = true;
+        placeholderOpt.hidden = true;
+        g2t.append(placeholderOpt);
+        g2t.append(new Option('--', 'd=0 am=0'));
 
         Object.entries(due).forEach(([key, value]) => {
-          // value is already available from the callback parameter
           if (typeof value === 'object') {
-            opt += `<optgroup label="${key}">`;
+            const group = document.createElement('optgroup');
+            group.label = key;
             Object.entries(value).forEach(([key1, value1]) => {
-              // value1 is already available from the callback parameter
-              opt += `<option value="${value1}">${key1}</option>`;
+              group.append(new Option(key1, value1));
             });
-            opt += '</optgroup>';
+            g2t.append(group);
           } else {
-            opt += `<option value="${value}">${key}</option>`;
+            g2t.append(new Option(key, value));
           }
         });
-
-        if (opt) {
-          $g2t.append($(opt));
-        }
       });
     } catch (error) {
       this.parent.handleChromeAPIError(error, 'bindData');
@@ -285,6 +325,7 @@ class PopupForm {
     let avatarText = '';
     let initials = '?';
 
+    const avatarEl = popup.querySelector('#g2tAvatarImgOrText');
     if (!avatarSrc) {
       if (me.initials?.length > 0) {
         initials = me.initials;
@@ -298,58 +339,75 @@ class PopupForm {
       }
 
       avatarText = initials.toUpperCase();
-      $('#g2tAvatarImgOrText', this.parent.$popup).text(avatarText);
+      if (avatarEl) {
+        avatarEl.textContent = avatarText;
+      }
     } else {
-      $('#g2tAvatarImgOrText', this.parent.$popup).html(
-        '<img width="30" height="30" alt="' +
-          me.username +
-          '" src="' +
-          avatarSrc +
-          '">',
-      );
+      if (avatarEl) {
+        const img = document.createElement('img');
+        img.width = 30;
+        img.height = 30;
+        img.alt = me.username;
+        img.src = avatarSrc;
+        avatarEl.replaceChildren(img);
+      }
     }
 
-    $('#g2tAvatarUrl', this.parent.$popup).attr('href', me.url);
+    const avatarUrlEl = popup.querySelector('#g2tAvatarUrl');
+    if (avatarUrlEl) {
+      avatarUrlEl.setAttribute('href', me.url);
+    }
 
-    $('#g2tUsername', this.parent.$popup)
-      .attr('href', me.url)
-      .text(me.username || '?');
+    const usernameEl = popup.querySelector('#g2tUsername');
+    if (usernameEl) {
+      usernameEl.setAttribute('href', me.url);
+      usernameEl.textContent = me.username || '?';
+    }
 
     // Attach reportError function to report id if in text:
-    $('#report', this.parent.$popup).on('click', () => {
-      this.reset();
+    const reportEl = popup.querySelector('#report');
+    if (reportEl) {
+      reportEl.addEventListener('click', () => {
+        this.reset();
 
-      const lastError_k =
-        (this.parent.lastError || '') + (this.parent.lastError ? '\n' : '');
+        const lastError_k =
+          (this.parent.lastError || '') + (this.parent.lastError ? '\n' : '');
 
-      const user_k = this.app.persist.user || {};
-      const username_k = user_k?.username || '';
-      const fullname_k = user_k?.fullName || '';
-      const date_k = new Date().toISOString().substring(0, 10);
+        const user_k = this.app.persist.user || {};
+        const username_k = user_k?.username || '';
+        const fullname_k = user_k?.fullName || '';
+        const date_k = new Date().toISOString().substring(0, 10);
 
-      // Modify this.data directly for error reporting
-      let persistData = '';
-      try {
-        persistData = JSON.stringify(this.app.persist);
-      } catch (e) {
-        persistData = `[Error serializing persist data: ${e.message}]`;
-      }
+        // Modify this.data directly for error reporting
+        let persistData = '';
+        try {
+          persistData = JSON.stringify(this.app.persist);
+        } catch (e) {
+          persistData = `[Error serializing persist data: ${e.message}]`;
+        }
 
-      this.app.temp.description =
-        lastError_k + persistData + '\n' + this.app.utils.log();
-      this.app.temp.title =
-        'Error report card: ' +
-        [fullname_k, username_k].join(' @') +
-        ' ' +
-        date_k;
+        this.app.temp.description =
+          lastError_k + persistData + '\n' + this.app.utils.log();
+        this.app.temp.title =
+          'Error report card: ' +
+          [fullname_k, username_k].join(' @') +
+          ' ' +
+          date_k;
 
-      this.updateBoards('52e1397addf85d4751f99319'); // GtT board
-      $('#g2tDesc', this.parent.$popup).val(this.app.temp.description);
-      $('#g2tTitle', this.parent.$popup).val(this.app.temp.title);
-    });
+        this.updateBoards('52e1397addf85d4751f99319'); // GtT board
+        const descEl = popup.querySelector('#g2tDesc');
+        if (descEl) {
+          descEl.value = this.app.temp.description;
+        }
+        const titleEl = popup.querySelector('#g2tTitle');
+        if (titleEl) {
+          titleEl.value = this.app.temp.title;
+        }
+      });
+    }
 
-    this.parent.$popupMessage.hide();
-    this.parent.$popupContent.show();
+    this.parent.$popupMessage[0].style.display = 'none';
+    this.parent.$popupContent[0].style.display = '';
 
     // Setting up comboboxes after loading data.
     this.comboBox();
@@ -357,14 +415,14 @@ class PopupForm {
 
   updateBody(data = {}) {
     const attribute_storage_k = this.parent.ATTRIBUTE_STORAGE;
+    const popup = this.parent.$popup[0];
 
     const markdown_k =
-      data?.markdown ?? $('#chkMarkdown', this.parent.$popup).is(':checked');
+      data?.markdown ?? popup.querySelector('#chkMarkdown').checked;
     const useBackLink_k =
-      data?.useBackLink ?? $('#chkBackLink', this.parent.$popup).is(':checked');
-    const addCC_k =
-      data?.addCC ?? $('#chkCC', this.parent.$popup).is(':checked');
-    const $g2tDesc = $('#g2tDesc', this.parent.$popup);
+      data?.useBackLink ?? popup.querySelector('#chkBackLink').checked;
+    const addCC_k = data?.addCC ?? popup.querySelector('#chkCC').checked;
+    const g2tDesc = popup.querySelector('#g2tDesc');
 
     const fields = [
       'bodyAsRaw',
@@ -382,13 +440,13 @@ class PopupForm {
       fields.forEach(value => {
         const val_k = data[value] || '';
         const name_k = attribute_storage_k + value;
-        $g2tDesc.attr(name_k, val_k);
+        g2tDesc.setAttribute(name_k, val_k);
       });
     } else {
       // Restore data values from description object attributes:
       fields.forEach(value => {
         const name_k = attribute_storage_k + value;
-        const val_k = $g2tDesc.attr(name_k) || '';
+        const val_k = g2tDesc.getAttribute(name_k) || '';
         data[value] = val_k;
       }); // WARNING (Ace, 2021-01-04): this might override data.emailId when we don't want it to
     }
@@ -407,44 +465,59 @@ class PopupForm {
     );
     const val_k = link_k + cc_k + desc_k;
 
-    $g2tDesc.val(val_k);
-    $g2tDesc.change();
+    g2tDesc.value = val_k;
+    g2tDesc.dispatchEvent(new Event('change'));
   }
 
   mime_array(tag) {
-    const self = this;
+    const popup = this.parent.$popup[0];
     const tag_formatted = `#${tag} input[type="checkbox"]`;
-    const $jTags = $(tag_formatted, self.parent.$popup);
+    const tags = popup.querySelectorAll(tag_formatted);
     const array = [];
     let item = {};
     let checked_total = 0;
 
-    $jTags.each(function () {
-      const checked = $(this).is(':checked');
+    for (const t of tags) {
+      const checked = t.checked;
       if (checked) {
         checked_total++;
       }
       item = {
-        url: $(this).attr('url'),
-        name: $(this).attr('name'),
-        mimeType: $(this).attr('mimeType'),
+        url: t.getAttribute('url'),
+        name: t.getAttribute('name'),
+        mimeType: t.getAttribute('mimeType'),
         checked,
       };
       array.push(item);
-    });
+    }
 
     return { array, checked_total };
   }
 
   reset() {
+    const popup = this.parent.$popup[0];
     // Reset form to initial state
-    $('#g2tCardName', this.parent.$popup).val('');
-    $('#g2tCardDesc', this.parent.$popup).val('');
-    $('#g2tBoard', this.parent.$popup).val('');
-    $('#g2tList', this.parent.$popup).val('');
+    const cardNameEl = popup.querySelector('#g2tCardName');
+    if (cardNameEl) {
+      cardNameEl.value = '';
+    }
+    const cardDescEl = popup.querySelector('#g2tCardDesc');
+    if (cardDescEl) {
+      cardDescEl.value = '';
+    }
+    const boardEl = popup.querySelector('#g2tBoard');
+    if (boardEl) {
+      boardEl.value = '';
+    }
+    const listEl = popup.querySelector('#g2tList');
+    if (listEl) {
+      listEl.value = '';
+    }
 
     // Clear checkboxes
-    $('input[type="checkbox"]', this.parent.$popup).prop('checked', false);
+    for (const cb of popup.querySelectorAll('input[type="checkbox"]')) {
+      cb.checked = false;
+    }
   }
 
   // Helper function for getting active IDs from button groups
@@ -452,11 +525,9 @@ class PopupForm {
     if (!tag) {
       return '';
     }
-    return $(`#g2t_${tag} button.active`, this.parent.$popup)
-      .map(function (iter, item) {
-        return $(item).attr(`trelloId-${tag}`);
-      })
-      .get()
+    const popup = this.parent.$popup[0];
+    return Array.from(popup.querySelectorAll(`#g2t_${tag} button.active`))
+      .map(item => item.getAttribute(`trelloId-${tag}`))
       .join();
   }
 
@@ -467,22 +538,24 @@ class PopupForm {
       this.app.persist.listId &&
       this.app.temp.title
     );
-    $('#addToTrello', this.parent.$popup).attr(
-      'disabled',
-      isAvailable ? false : 'disabled',
-    );
+    const popup = this.parent.$popup[0];
+    const addToTrelloBtn = popup.querySelector('#addToTrello');
+    if (addToTrelloBtn) {
+      addToTrelloBtn.disabled = !isAvailable;
+    }
   }
 
   // UI Updates
   updateBoards(tempId = 0) {
     const boards = this.app.temp.boards || [];
-    const $boardSelect = $('#g2tBoard', this.parent.$popup);
+    const popup = this.parent.$popup[0];
+    const boardSelect = popup.querySelector('#g2tBoard');
 
-    $boardSelect.empty();
-    $boardSelect.append('<option value="">Select a board...</option>');
+    boardSelect.replaceChildren();
+    boardSelect.append(new Option('Select a board...', ''));
 
     boards.forEach(board => {
-      $boardSelect.append(`<option value="${board.id}">${board.name}</option>`);
+      boardSelect.append(new Option(board.name, board.id));
     });
 
     // Use consistent restoreId logic like updateLists/updateCards
@@ -496,7 +569,7 @@ class PopupForm {
     const restoreId_k = updatePending_k || tempId || prev_item_k || '';
 
     // Always explicitly set the value
-    $boardSelect.val(restoreId_k);
+    boardSelect.value = restoreId_k;
   }
 
   updateLists(tempId = 0) {
@@ -506,7 +579,8 @@ class PopupForm {
       return;
     }
 
-    const boardId_k = $('#g2tBoard', this.parent.$popup).val();
+    const popup = this.parent.$popup[0];
+    const boardId_k = popup.querySelector('#g2tBoard').value;
 
     const prev_item_k =
       this.app.persist.boardId == boardId_k && this.app.persist.listId
@@ -522,34 +596,32 @@ class PopupForm {
     const restoreId_k =
       updatePending_k || tempId || prev_item_k || first_item_k || 0;
 
-    const $g2t = $('#g2tList', this.parent.$popup);
-    $g2t.html('');
+    const g2t = popup.querySelector('#g2tList');
+    g2t.replaceChildren();
 
     array_k.forEach(item => {
       const id_k = item.id;
       const display_k = item.name;
       const selected_k = id_k == restoreId_k;
-      $g2t.append(
-        $('<option>')
-          .attr('value', id_k)
-          .prop('selected', selected_k)
-          .append(display_k),
-      );
+      const opt = document.createElement('option');
+      opt.value = id_k;
+      opt.selected = selected_k;
+      opt.append(display_k);
+      g2t.append(opt);
     });
 
-    $g2t.change();
+    g2t.dispatchEvent(new Event('change'));
   }
 
   updateCards(tempId = 0) {
-    const new_k = '<option value="-1">(new card at top)</option>';
-
     const array_k = this.app.temp.cards || [];
 
     if (!array_k) {
       return;
     }
 
-    const listId_k = $('#g2tList', this.parent.$popup).val();
+    const popup = this.parent.$popup[0];
+    const listId_k = popup.querySelector('#g2tList').value;
 
     const prev_item_k =
       this.app.persist.listId == listId_k && this.app.persist.cardId
@@ -565,68 +637,84 @@ class PopupForm {
     const restoreId_k =
       updatePending_k || tempId || prev_item_k || first_item_k || 0;
 
-    const $g2t = $('#g2tCard', this.parent.$popup);
-    $g2t.html(new_k);
+    const g2t = popup.querySelector('#g2tCard');
+
+    // Build the "(new card at top)" option natively, then rebuild list
+    const newOpt = new Option('(new card at top)', '-1');
+    g2t.replaceChildren(newOpt);
 
     array_k.forEach(item => {
       const id_k = item.id;
       const display_k = this.app.utils.truncate(item.name, 80, '...');
       const selected_k = id_k == restoreId_k;
-      $g2t.append(
-        $('<option>')
-          .attr('value', id_k)
-          .prop('pos', item.pos)
-          .prop('members', item.idMembers)
-          .prop('labels', item.idLabels)
-          .prop('selected', selected_k)
-          .append(display_k),
-      );
+      const opt = document.createElement('option');
+      opt.value = id_k;
+      opt.pos = item.pos;
+      opt.members = item.idMembers;
+      opt.labels = item.idLabels;
+      opt.selected = selected_k;
+      opt.append(display_k);
+      g2t.append(opt);
     });
 
-    $g2t.change();
+    g2t.dispatchEvent(new Event('change'));
   }
 
   updateLabels() {
     const labels = this.app.temp.labels;
-    const $g2t = $('#g2t_label', this.parent.$popup);
-    $g2t.html(''); // Clear out
+    const popup = this.parent.$popup[0];
+    const g2t = popup.querySelector('#g2t_label');
+    g2t.replaceChildren();
 
     for (let i = 0; i < labels.length; i++) {
       const item = labels[i];
       if (item.name?.length > 0) {
-        const $color = $("<div id='g2t_temp'>").css('color', item.color);
-        const bkColor = this.app.utils.luminance($color.css('color')); // If you'd like to determine whether to make the background light or dark
-        $g2t.append(
-          $('<button>')
-            .attr('trelloId-label', item.id)
-            .css('border-color', item.color)
-            // .css("background-color", bkColor)
-            .append(item.name)
-            .on('mousedown mouseup', evt => {
-              const elm = $(evt.currentTarget);
-              this.parent.toggleActiveMouseDown(elm);
-              // Update persist.labelsId when label selection changes
-              this.app.persist.labelsId = this.getButtonGroupActiveIDs('label');
-            })
-            .on('keypress', evt => {
-              const trigger_k =
-                evt.which == 13 ? 'mousedown' : evt.which == 32 ? 'click' : '';
-              if (trigger_k) {
-                $(evt.target).trigger(trigger_k);
-              }
-            }),
-        );
+        // Color luminance probe via native computed style
+        const probe = document.createElement('div');
+        probe.style.color = item.color;
+        document.body.append(probe);
+        const bkColor = this.app.utils.luminance(getComputedStyle(probe).color); // If you'd like to determine whether to make the background light or dark
+        probe.remove();
+
+        const btn = document.createElement('button');
+        btn.setAttribute('trelloId-label', item.id);
+        btn.style.borderColor = item.color;
+        // btn.style.backgroundColor = bkColor;
+        btn.append(item.name);
+        btn.addEventListener('mousedown', evt => {
+          const elm = evt.currentTarget;
+          this.parent.toggleActiveMouseDown(elm);
+          // Update persist.labelsId when label selection changes
+          this.app.persist.labelsId = this.getButtonGroupActiveIDs('label');
+        });
+        btn.addEventListener('mouseup', evt => {
+          const elm = evt.currentTarget;
+          this.parent.toggleActiveMouseDown(elm);
+          // Update persist.labelsId when label selection changes
+          this.app.persist.labelsId = this.getButtonGroupActiveIDs('label');
+        });
+        btn.addEventListener('keypress', evt => {
+          const trigger_k =
+            evt.which == 13 ? 'mousedown' : evt.which == 32 ? 'click' : '';
+          if (trigger_k) {
+            evt.target.dispatchEvent(new Event(trigger_k));
+          }
+        });
+        g2t.append(btn);
       }
     }
 
-    $('#g2t_label_msg', this.parent.$popup).hide();
+    const labelMsgEl = popup.querySelector('#g2t_label_msg');
+    if (labelMsgEl) {
+      labelMsgEl.style.display = 'none';
+    }
 
     this.parent.menuCtrl.reset({
       selectors: '#g2t_label button',
       nonexclusive: true,
     });
 
-    const boardId = $('#g2tBoard', this.parent.$popup).val();
+    const boardId = popup.querySelector('#g2tBoard').value;
     if (
       this.app.persist.boardId &&
       this.app.persist.boardId === boardId &&
@@ -636,23 +724,26 @@ class PopupForm {
       for (let i = 0; i < labels.length; i++) {
         const item = labels[i];
         if (settingId.indexOf(item.id) !== -1) {
-          $(
+          const btnEl = popup.querySelector(
             '#g2t_label button[trelloId-label="' + item.id + '"]',
-            this.parent.$popup,
-          ).trigger('click');
+          );
+          if (btnEl) {
+            btnEl.click();
+          }
         }
       }
     } else {
       this.app.persist.labelsId = ''; // Labels do not have to be set, so no default.
     }
 
-    $g2t.show();
+    g2t.style.display = '';
   }
 
   updateMembers() {
     const members = this.app.temp.members;
-    const $g2t = $('#g2tMembers', this.parent.$popup);
-    $g2t.html(''); // Clear out
+    const popup = this.parent.$popup[0];
+    const g2t = popup.querySelector('#g2tMembers');
+    g2t.replaceChildren();
 
     for (let i = 0; i < members.length; i++) {
       const item = members[i];
@@ -664,38 +755,48 @@ class PopupForm {
           }) ||
           chrome.runtime.getURL('images/avatar_generic_profile_gry_30x30.png'); // Default generic profile
         const size_k = 20;
-        $g2t.append(
-          $('<button>')
-            .attr('trelloId-member', item.id)
-            .attr('title', item.fullName + ' @' + item.username || '?')
-            .attr('class', 'g2t-holder-button')
-            .append(
-              $('<img>')
-                .attr('src', avatar)
-                .attr('width', size_k)
-                .attr('height', size_k),
-            )
-            .append(' ' + txt)
-            .on('mousedown mouseup', evt => {
-              const elm = $(evt.currentTarget);
-              this.parent.toggleActiveMouseDown(elm);
-              // Update persist.membersId when member selection changes
-              this.app.persist.membersId =
-                this.getButtonGroupActiveIDs('member');
-            })
-            // NOTE (Ace, 2021-02-08): crlf uses mousedown, spacebar uses click:
-            .on('keypress', evt => {
-              const trigger_k =
-                evt.which == 13 ? 'mousedown' : evt.which == 32 ? 'click' : '';
-              if (trigger_k) {
-                $(evt.target).trigger(trigger_k);
-              }
-            }),
-        );
+
+        const btn = document.createElement('button');
+        btn.setAttribute('trelloId-member', item.id);
+        btn.setAttribute('title', item.fullName + ' @' + item.username || '?');
+        btn.setAttribute('class', 'g2t-holder-button');
+
+        const img = document.createElement('img');
+        img.src = avatar;
+        img.width = size_k;
+        img.height = size_k;
+        btn.append(img);
+        btn.append(' ' + txt);
+
+        btn.addEventListener('mousedown', evt => {
+          const elm = evt.currentTarget;
+          this.parent.toggleActiveMouseDown(elm);
+          // Update persist.membersId when member selection changes
+          this.app.persist.membersId = this.getButtonGroupActiveIDs('member');
+        });
+        btn.addEventListener('mouseup', evt => {
+          const elm = evt.currentTarget;
+          this.parent.toggleActiveMouseDown(elm);
+          // Update persist.membersId when member selection changes
+          this.app.persist.membersId = this.getButtonGroupActiveIDs('member');
+        });
+        // NOTE (Ace, 2021-02-08): crlf uses mousedown, spacebar uses click:
+        btn.addEventListener('keypress', evt => {
+          const trigger_k =
+            evt.which == 13 ? 'mousedown' : evt.which == 32 ? 'click' : '';
+          if (trigger_k) {
+            evt.target.dispatchEvent(new Event(trigger_k));
+          }
+        });
+
+        g2t.append(btn);
       }
     }
 
-    $('#g2t_member_msg', this.parent.$popup).hide();
+    const memberMsgEl = popup.querySelector('#g2t_member_msg');
+    if (memberMsgEl) {
+      memberMsgEl.style.display = 'none';
+    }
 
     this.parent.menuCtrl.reset({
       selectors: '#g2tMembers button',
@@ -707,26 +808,29 @@ class PopupForm {
       for (let i = 0; i < members.length; i++) {
         const item = members[i];
         if (settingId.indexOf(item.id) !== -1) {
-          $(
+          const btnEl = popup.querySelector(
             '#g2tMembers button[trelloId-member="' + item.id + '"]',
-            this.parent.$popup,
-          ).trigger('click');
+          );
+          if (btnEl) {
+            btnEl.click();
+          }
         }
       }
     } else {
       this.app.persist.membersId = '';
     }
 
-    $g2t.show();
+    g2t.style.display = '';
   }
 
   clearBoard() {
-    const $g2t = $('#g2tBoard', this.parent.$popup);
-    $g2t.html(''); // Clear it.
+    const popup = this.parent.$popup[0];
+    const g2t = popup.querySelector('#g2tBoard');
+    g2t.replaceChildren();
 
-    $g2t.append($('<option value="">Select a board....</option>'));
+    g2t.append(new Option('Select a board....', ''));
 
-    $g2t.change();
+    g2t.dispatchEvent(new Event('change'));
   }
 
   clearLabels() {
@@ -740,10 +844,13 @@ class PopupForm {
   }
 
   toggleCheckboxes(tag) {
-    const $jTags = $('#' + tag + ' input[type="checkbox"]', this.parent.$popup);
-    const $jTag1 = $jTags.first();
-    const checked_k = $jTag1.prop('checked') || false;
-    $jTags.prop('checked', !checked_k);
+    const popup = this.parent.$popup[0];
+    const tags = popup.querySelectorAll('#' + tag + ' input[type="checkbox"]');
+    const tag1 = tags[0];
+    const checked_k = tag1 ? tag1.checked : false;
+    for (const t of tags) {
+      t.checked = !checked_k;
+    }
   }
 
   // Form Display
@@ -758,59 +865,75 @@ class PopupForm {
       return;
     }
 
-    this.parent.$popupMessage.html(text);
+    const popupMessage = this.parent.$popupMessage[0];
+    // text is plain string in all current call sites
+    popupMessage.textContent = text;
 
     // Attach hideMessage function to hideMsg class if in text:
-    $('.hideMsg', this.parent.$popupMessage).on('click', () => {
-      this.hideMessage();
-    });
+    for (const el of popupMessage.querySelectorAll('.hideMsg')) {
+      el.addEventListener('click', () => {
+        this.hideMessage();
+      });
+    }
 
-    $(':button', this.parent.$popupMessage).on('click', event => {
-      const $status =
-        $(`span#${event.target.id}`, this.parent.$popupMessage) || '';
-      switch (event.target.id) {
-        case 'signout':
-          $status.html('Done');
-          this.app.events.emit('requestDeauthorizeTrello');
-          break;
-        case 'reload':
-          this.parent.forceSetVersion(); // Sets value for version if needing update
-          $status.html('Reloading');
-          window.location.reload(true);
-          break;
-        case 'clearCacheNow': {
-          $status.html('Clearing');
-          try {
-            chrome.runtime.sendMessage(
-              { [this.parent.CLEAR_EXT_BROWSING_DATA]: true },
-              () => {
-                $status.html('Done');
-                setTimeout(() => {
-                  $status.html('&nbsp;');
-                }, 2500);
-              },
-            );
-          } catch (error) {
-            this.parent.handleChromeAPIError(error, 'showMessage');
+    for (const btn of popupMessage.querySelectorAll('button')) {
+      btn.addEventListener('click', event => {
+        const statusEl =
+          popupMessage.querySelector(`span#${event.target.id}`) || null;
+        switch (event.target.id) {
+          case 'signout':
+            if (statusEl) {
+              statusEl.textContent = 'Done';
+            }
+            this.app.events.emit('requestDeauthorizeTrello');
+            break;
+          case 'reload':
+            this.parent.forceSetVersion(); // Sets value for version if needing update
+            if (statusEl) {
+              statusEl.textContent = 'Reloading';
+            }
+            window.location.reload(true);
+            break;
+          case 'clearCacheNow': {
+            if (statusEl) {
+              statusEl.textContent = 'Clearing';
+            }
+            try {
+              chrome.runtime.sendMessage(
+                { [this.parent.CLEAR_EXT_BROWSING_DATA]: true },
+                () => {
+                  if (statusEl) {
+                    statusEl.textContent = 'Done';
+                  }
+                  setTimeout(() => {
+                    if (statusEl) {
+                      statusEl.textContent = '\u00a0';
+                    }
+                  }, 2500);
+                },
+              );
+            } catch (error) {
+              this.parent.handleChromeAPIError(error, 'showMessage');
+            }
+            break;
           }
-          break;
+          case 'showsignout':
+            this.parent.showSignOutOptions();
+            break;
+          default:
+            this.app.utils.log(
+              `showMessage: ERROR unhandled case "${event.target.id}"`,
+            );
         }
-        case 'showsignout':
-          this.parent.showSignOutOptions();
-          break;
-        default:
-          this.app.utils.log(
-            `showMessage: ERROR unhandled case "${event.target.id}"`,
-          );
-      }
-      if ($status.length > 0) {
-        setTimeout(() => {
-          $status.html('&nbsp;');
-        }, 2500);
-      }
-    });
+        if (statusEl) {
+          setTimeout(() => {
+            statusEl.textContent = '\u00a0';
+          }, 2500);
+        }
+      });
+    }
 
-    this.parent.$popupMessage.show();
+    popupMessage.style.display = '';
   }
 
   hideMessage() {
@@ -819,30 +942,33 @@ class PopupForm {
       return;
     }
 
-    if (this.parent.$popupContent.is(':hidden')) {
+    const popupContent = this.parent.$popupContent[0];
+    const popupMessage = this.parent.$popupMessage[0];
+
+    if (popupContent.offsetParent === null) {
       // Rest of box is hidden so close it all:
-      this.parent.$popup.hide(); // Parent is popup, so hide the whole thing
+      this.parent.$popup[0].style.display = 'none'; // Parent is popup, so hide the whole thing
     } else {
-      this.parent.$popupMessage.hide();
+      popupMessage.style.display = 'none';
     }
   }
 
   displaySubmitCompleteForm(params) {
-    const $form = $('#g2tForm', this.parent.$popup);
-    const $success = $(
-      '<div class="g2t-success">Card created successfully!</div>',
-    );
+    const popup = this.parent.$popup[0];
+    const form = popup.querySelector('#g2tForm');
 
-    $form.hide();
-    $form.after($success);
+    const success = document.createElement('div');
+    success.className = 'g2t-success';
+    success.textContent = 'Card created successfully!';
+
+    form.style.display = 'none';
+    form.after(success);
 
     // Auto-hide after 3 seconds
     setTimeout(() => {
-      $success.fadeOut(() => {
-        $success.remove();
-        $form.show();
-        this.reset();
-      });
+      success.remove();
+      form.style.display = '';
+      this.reset();
     }, 3000);
   }
 
@@ -866,25 +992,39 @@ class PopupForm {
 
     // Load and display the comprehensive error template
     function displayAPIFailedForm_loadFile(html) {
+      const popup = this.parent.$popup[0];
       let errorHtml = html;
       if (resp?.status == 400) {
         errorHtml +=
           '<br><button id="reloadTrelloBoards" class="g2t-button">Reload Trello Boards</button>';
       }
-      this.parent.$popupContent.html(errorHtml);
+      // errorHtml comes from app.utils.loadFile (a static extension asset),
+      // routed through g2tTrustedTypesPolicy once Lane 5 registers it.
+      this.parent.$popupContent[0].innerHTML = window.g2tTrustedTypesPolicy
+        ? window.g2tTrustedTypesPolicy.createHTML(errorHtml)
+        : errorHtml;
       // Keep message area hidden when rendering full error content
       if (this.parent.$popupMessage) {
-        this.parent.$popupMessage.hide();
+        this.parent.$popupMessage[0].style.display = 'none';
       }
       // Bind reload handler after DOM injection
       if (resp?.status == 400) {
-        $('#reloadTrelloBoards', this.parent.$popup)
-          .off('click')
-          .on('click', () => {
-            this.app.utils.log('User clicked reload Trello boards button');
-            this.app.model.loadTrelloUser();
-            this.parent.reset(); // Hide error message and show popup content
-          });
+        const reloadBtn = popup.querySelector('#reloadTrelloBoards');
+        if (reloadBtn) {
+          if (this.controllers.reloadTrelloBoards) {
+            this.controllers.reloadTrelloBoards.abort();
+          }
+          this.controllers.reloadTrelloBoards = new AbortController();
+          reloadBtn.addEventListener(
+            'click',
+            () => {
+              this.app.utils.log('User clicked reload Trello boards button');
+              this.app.model.loadTrelloUser();
+              this.parent.reset(); // Hide error message and show popup content
+            },
+            { signal: this.controllers.reloadTrelloBoards.signal },
+          );
+        }
       }
     }
     const path = 'views/error.html';
@@ -904,37 +1044,41 @@ class PopupForm {
 
   // Form Components
   comboBox(update) {
-    const $jVals = { Board: '', Card: '', List: '' };
+    const jVals = { Board: '', Card: '', List: '' };
+    const popup = this.parent.$popup[0];
     const setJQueryVals = () => {
-      Object.entries($jVals).forEach(([key, $value]) => {
-        $jVals[key] = $(`#g2t${key}`, this.parent.$popup);
+      Object.entries(jVals).forEach(([key]) => {
+        jVals[key] = $(`#g2t${key}`, this.parent.$popup);
       });
     };
     const set_max_autocomplete_size = () => {
       const max_k = window.innerHeight;
-      const $board_k = $jVals.Board;
+      const board_k = popup.querySelector('#g2tBoard');
       const popup_offset_k = this.parent.$popup.offset();
       const popup_top_k = popup_offset_k.top;
-      const board_height_k = $board_k.outerHeight();
+      const board_height_k = board_k ? board_k.offsetHeight : 0;
       const calc_k = max_k - popup_top_k - board_height_k - 90;
       const val_k = calc_k > this.parent.size_k.text.min ? calc_k : '60%';
-      $('.ui-autocomplete').css('max-height', val_k);
+      for (const el of document.querySelectorAll('.ui-autocomplete')) {
+        el.style.maxHeight = typeof val_k === 'number' ? val_k + 'px' : val_k;
+      }
     };
     if (!update) {
       setTimeout(() => {
         this.parent.comboInitialized = true;
         setJQueryVals();
-        Object.entries($jVals).forEach(([key, $value]) => {
+        Object.entries(jVals).forEach(([_key, $value]) => {
           $value.g2t_combobox();
         });
         set_max_autocomplete_size();
       }, 1000);
     } else if (this.parent.comboInitialized) {
       setJQueryVals();
-      Object.entries($jVals).forEach(([key, $value]) => {
+      Object.entries(jVals).forEach(([_key, $value]) => {
+        const selectEl = $value[0];
         $value.g2t_combobox(
           'setInputValue',
-          $value.children('option:selected').text(),
+          selectEl.options[selectEl.selectedIndex]?.textContent ?? '',
         );
       });
       set_max_autocomplete_size();
@@ -943,68 +1087,92 @@ class PopupForm {
 
   mime_html(tag, isImage, data) {
     const self = this;
-    let html = '';
-    let img = '';
-    let img_big = '';
+    const popup = this.parent.$popup[0];
     const domTag_k = `#g2t_${tag.toLowerCase()}`;
-    const $domTag = $(domTag_k, this.parent.$popup);
+    const domTag = popup.querySelector(domTag_k);
 
-    const domTagContainer = domTag_k + '_container';
-    const $domTagContainer = $(domTagContainer, this.parent.$popup);
-    $domTagContainer.css('display', data[tag].length > 0 ? 'block' : 'none');
-
-    if (isImage && isImage === true) {
-      img =
-        '<div class="img-container"><img src="%url%" alt="%name%" /></div> ';
+    const domTagContainerSel = domTag_k + '_container';
+    const domTagContainerEl = popup.querySelector(domTagContainerSel);
+    if (domTagContainerEl) {
+      domTagContainerEl.style.display = data[tag].length > 0 ? 'block' : 'none';
     }
+
+    // Build attachment/image items via DOM - no HTML strings
+    domTag.replaceChildren();
 
     let x = 0;
     data[tag].forEach(item => {
-      const dict = {
-        url: item.url,
-        name: item.name,
-        mimeType: item.mimeType,
-        img,
-        id: `${item.name}:${x}`,
-      };
+      const id = `${item.name}:${x}`;
+      const wrapper = document.createElement('div');
 
       if (tag == 'attachment') {
-        html += this.app.utils.replacer(
-          '<div class="imgOrAttach textOnlyPopup" title="%name%"><input type="checkbox" id="%id%" class="g2t-checkbox" mimeType="%mimeType%" name="%name%" url="%url%" checked /><label for="%id%">%name%</label></div>',
-          dict,
-        );
+        wrapper.className = 'imgOrAttach textOnlyPopup';
+        wrapper.title = item.name;
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = id;
+        cb.className = 'g2t-checkbox';
+        cb.setAttribute('mimeType', item.mimeType);
+        cb.setAttribute('name', item.name);
+        cb.setAttribute('url', item.url);
+        cb.checked = true;
+        wrapper.append(cb);
+
+        const lbl = document.createElement('label');
+        lbl.setAttribute('for', id);
+        lbl.textContent = item.name;
+        wrapper.append(lbl);
       } else if (tag == 'image') {
-        html += this.app.utils.replacer(
-          '<div class="imgOrAttach"><input type="checkbox" id="%id%" mimeType="%mimeType%" class="g2t-checkbox" name="%name%" url="%url%" /><label for="%id%" title="%name%"> %img% </label></div>',
-          dict,
-        );
+        wrapper.className = 'imgOrAttach';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = id;
+        cb.setAttribute('mimeType', item.mimeType);
+        cb.className = 'g2t-checkbox';
+        cb.setAttribute('name', item.name);
+        cb.setAttribute('url', item.url);
+        wrapper.append(cb);
+
+        const lbl = document.createElement('label');
+        lbl.setAttribute('for', id);
+        lbl.title = item.name;
+
+        if (isImage) {
+          const imgContainer = document.createElement('div');
+          imgContainer.className = 'img-container';
+          const imgEl = document.createElement('img');
+          imgEl.src = item.url;
+          imgEl.alt = item.name;
+          imgContainer.append(imgEl);
+          lbl.append(imgContainer);
+          lbl.append(' ');
+        }
+
+        wrapper.append(lbl);
       }
+
+      domTag.append(wrapper);
       x++;
     });
 
-    $domTag.html(html);
-
     if (isImage && isImage === true) {
-      $('img', $domTag).each(function () {
-        const $img = $(this);
-        $img
-          .on('error', function () {
-            $img.attr(
-              'src',
-              chrome.runtime.getURL('images/doc-question-mark-512.png'),
-            );
-          })
-          .tooltip({
-            track: true,
-            content: function () {
-              const dict = {
-                src: $img.attr('src'),
-                alt: $img.attr('alt'),
-              };
-              return self.app.utils.replacer('<img src="%src%">%alt%', dict);
-            },
-          });
-      });
+      for (const imgEl of domTag.querySelectorAll('img')) {
+        imgEl.addEventListener('error', function () {
+          imgEl.src = chrome.runtime.getURL('images/doc-question-mark-512.png');
+        });
+        $(imgEl).tooltip({
+          track: true,
+          content: function () {
+            const dict = {
+              src: imgEl.getAttribute('src'),
+              alt: imgEl.getAttribute('alt'),
+            };
+            return self.app.utils.replacer('<img src="%src%">%alt%', dict);
+          },
+        });
+      }
       $('.textOnlyPopup').tooltip({
         track: true,
       });
@@ -1014,7 +1182,7 @@ class PopupForm {
   // Form Actions
   submit() {
     if (this.parent.$popupContent) {
-      this.parent.$popupContent.hide();
+      this.parent.$popupContent[0].style.display = 'none';
     }
     this.showMessage(this.parent, 'Submitting to Trello...');
     this.app.events.emit('submit');
@@ -1022,7 +1190,7 @@ class PopupForm {
 
   // Form Event Handlers
   handleBoardChanged(target, params) {
-    const boardId = $(target).val();
+    const boardId = target.value;
     if (boardId) {
       this.app.persist.boardId = boardId;
       this.app.events.emit('boardChanged', { boardId });
@@ -1030,7 +1198,7 @@ class PopupForm {
   }
 
   handleListChanged(target, params) {
-    const listId = $(target).val();
+    const listId = target.value;
     if (listId) {
       this.app.persist.listId = listId;
       this.app.events.emit('listChanged', { listId });
@@ -1118,7 +1286,7 @@ class PopupForm {
   }
 
   bindGmailData(data = {}) {
-    if ($.isEmptyObject(data)) {
+    if (!data || Object.keys(data).length === 0) {
       return;
     }
 
@@ -1126,7 +1294,11 @@ class PopupForm {
     Object.assign(data, this.app.persist || {});
     this.updateBody(data);
 
-    $('#g2tTitle', this.parent.$popup).val(data.subject);
+    const popup = this.parent.$popup[0];
+    const titleEl = popup.querySelector('#g2tTitle');
+    if (titleEl) {
+      titleEl.value = data.subject;
+    }
 
     this.mime_html('attachment', false, data);
     this.mime_html('image', true, data);
@@ -1144,7 +1316,10 @@ class PopupForm {
     if (
       ['boardId', 'listId', 'cardId'].every(field => !!mapAvailable_k?.[field])
     ) {
-      $('#g2tPosition', this.parent.$popup).val('to');
+      const posEl = popup.querySelector('#g2tPosition');
+      if (posEl) {
+        posEl.value = 'to';
+      }
       this.updateBoards(mapAvailable_k.boardId);
       const listId = mapAvailable_k.listId;
       const cardId = mapAvailable_k.cardId;
