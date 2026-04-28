@@ -354,7 +354,16 @@ When('model.load is called on the real app', function () {
     // Should not be called
     this._authorizeCallCount = (this._authorizeCallCount || 0) + 1;
   }.bind(this);
+  // Lane 4 will update class_utils.markdownify to accept native elements.
+  // Until then, patch it here to wrap native elements with jQuery.
+  const $ = sharedWindow.$;
+  const origMarkdownify = this._realApp.utils.markdownify.bind(this._realApp.utils);
+  this._realApp.utils.markdownify = (el, features, preprocess) => {
+    const $el = el && el.nodeType ? $(el) : el;
+    return origMarkdownify($el, features, preprocess);
+  };
   this._realApp.model.load();
+  this._realApp.utils.markdownify = origMarkdownify;
 });
 
 Then('Trello.authorize was not called', function () {
@@ -598,16 +607,25 @@ Given(
 
     $body.append(gmailHtml);
 
-    // Set the gmailView root to the test structure specifically
-    this._realApp.gmailView.$root = $body.find('.gmail-test-structure');
+    // Set the gmailView root to the test structure specifically (field renamed $root -> root)
+    this._realApp.gmailView.root = sharedWindow.document.querySelector('.gmail-test-structure');
   },
 );
 
 When(
   'gmailView.parseData is called with fullName {string}',
   function (fullName) {
+    // Lane 4 will update class_utils.markdownify to accept native elements.
+    // Until then, patch it here to wrap native elements with jQuery.
+    const $ = sharedWindow.$;
+    const origMarkdownify = this._realApp.utils.markdownify.bind(this._realApp.utils);
+    this._realApp.utils.markdownify = (el, features, preprocess) => {
+      const $el = el && el.nodeType ? $(el) : el;
+      return origMarkdownify($el, features, preprocess);
+    };
     this._realApp.gmailView.parsingData = false;
     this._parseResult = this._realApp.gmailView.parseData({ fullName });
+    this._realApp.utils.markdownify = origMarkdownify;
   },
 );
 
@@ -645,10 +663,19 @@ Given('the real app has DOM ready and persist loaded', function () {
 When(
   'trelloUserAndBoardsReady event fires triggering gmailDataReady',
   function () {
+    // Lane 4 will update class_utils.markdownify to accept native elements.
+    // Until then, patch it here to wrap native elements with jQuery.
+    const $ = sharedWindow.$;
+    const origMarkdownify = this._realApp.utils.markdownify.bind(this._realApp.utils);
+    this._realApp.utils.markdownify = (el, features, preprocess) => {
+      const $el = el && el.nodeType ? $(el) : el;
+      return origMarkdownify($el, features, preprocess);
+    };
     // Set up trello responses for the auth chain that fires during this event
     this._trelloResponseMap = this._trelloResponseMap || {};
     mockTrelloResponses(this._trelloResponseMap);
     this._realApp.events.emit('trelloUserAndBoardsReady');
+    this._realApp.utils.markdownify = origMarkdownify;
   },
 );
 
@@ -679,7 +706,7 @@ Given('the DOM has no Gmail email structure', function () {
   $('body').find('.aia').remove();
   $('body').find('.h7').remove();
   $('body').find('.hP').remove();
-  this._realApp.gmailView.$root = $('body');
+  this._realApp.gmailView.root = sharedWindow.document.body; // field renamed $root -> root
 });
 
 Then('parseData returns undefined without crashing', function () {
