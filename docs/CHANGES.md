@@ -1,3 +1,11 @@
+=== 3.2.0.002@2026-04-27 ===
+
+* Fix Trusted Types violation that prevented the popup from rendering on real Gmail (Chrome's `require-trusted-types-for 'script'` CSP blocked jQuery's internal `innerHTML` writes). Register a `g2t-gmail-html` policy in both content-script worlds and route jQuery's `htmlPrefilter` through it.
+* Upgrade jQuery from 3.7.1 to 4.0.0.
+* Confirm bundled gmail.js is at v1.1.16, which removed deprecated jQuery APIs for jQuery 4 compatibility.
+* Sweep our own code off jQuery wherever a direct native equivalent exists. `views/class_popupForm.js`, `views/class_popupView.js`, `views/class_gmailView.js`, `class_utils.js`, and `class_menuControl.js` now use native DOM APIs (`querySelector`, `addEventListener`, `classList`, `textContent`, `setAttribute`, etc.). jQuery is retained only for gmail.js and jQuery UI widgets (`tooltip`, `g2t_combobox`).
+* Replace jQuery namespaced events (e.g. `'change.g2tPopupForm'`) with `AbortController`-based listener teardown.
+
 === 3.2.0.001@2026-04-26 ===
 
 * Replace MutationObserver polling with gmail.js event-driven Gmail UI detection
