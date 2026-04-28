@@ -13,6 +13,43 @@ class PopupView {
     return PopupView.ck;
   }
 
+  // Backward-compat shims for cross-class callers still using $popup etc.
+  // These will be deleted in Lane 6. Setters unwrap jQuery objects so that
+  // test setup code (and GmailView lane-3) can still write $foo = $(...) and
+  // have the native field updated correctly.
+  get $popup() {
+    return this.popup ? $(this.popup) : null;
+  }
+  set $popup(jqVal) {
+    this.popup = jqVal && jqVal[0] ? jqVal[0] : null;
+  }
+  get $popupContent() {
+    return this.popupContent ? $(this.popupContent) : null;
+  }
+  set $popupContent(jqVal) {
+    this.popupContent = jqVal && jqVal[0] ? jqVal[0] : null;
+  }
+  get $popupMessage() {
+    return this.popupMessage ? $(this.popupMessage) : null;
+  }
+  set $popupMessage(jqVal) {
+    this.popupMessage = jqVal && jqVal[0] ? jqVal[0] : null;
+  }
+  get $g2tButton() {
+    return this.g2tButton ? $(this.g2tButton) : null;
+  }
+  set $g2tButton(jqVal) {
+    this.g2tButton = jqVal && jqVal[0] ? jqVal[0] : null;
+  }
+  get $toolBar() {
+    return this.toolBar ? $(this.toolBar) : null;
+  }
+  // Setter shim: GmailView (Lane 3) still writes this.app.popupView.$toolBar = jQueryObj.
+  // Unwrap to a native Element so our native fields stay consistent.
+  set $toolBar(jqVal) {
+    this.toolBar = jqVal && jqVal[0] ? jqVal[0] : null;
+  }
+
   constructor(args) {
     this.app = args.app;
     this.isInitialized = false;
@@ -67,6 +104,9 @@ class PopupView {
     this.updatesPending = [];
     this.comboInitialized = false;
 
+    // AbortControllers for document-level and element-level event listeners
+    this.controllers = {};
+
     // Initialize form instance
     this.form = new G2T.PopupForm({
       parent: this,
@@ -74,16 +114,32 @@ class PopupView {
     });
   }
 
+  // Helper: abort + replace a named AbortController
+  _resetController(name) {
+    if (this.controllers[name]) {
+      this.controllers[name].abort();
+    }
+    this.controllers[name] = new AbortController();
+    return this.controllers[name];
+  }
+
+  // Helper: insert an HTML string into a parent element safely via DOMParser (Path A)
+  _appendHtml(parent, htmlString) {
+    const doc = new DOMParser().parseFromString(htmlString, 'text/html');
+    const nodes = Array.from(doc.body.childNodes);
+    nodes.forEach(node => parent.appendChild(node));
+  }
+
   finalCreatePopup() {
-    if (!this.$toolBar) {
+    if (!this.toolBar) {
       return; // button not available yet
     }
 
     let needInit = false;
-    const $button = $('#g2tButton');
-    const $popup = $('#g2tPopup');
+    const button = document.querySelector('#g2tButton');
+    const popup = document.querySelector('#g2tPopup');
 
-    if ($button.length < 1) {
+    if (!button) {
       if (
         this.html &&
         this.html['add_to_trello'] &&
@@ -98,8 +154,9 @@ class PopupView {
 
         // Refresh icon present? If so, use graphics, if not, use text:
         if (
-          $('div.asl.T-I-J3.J-J5-Ji,div.asf.T-I-J3.J-J5-Ji', this.$toolBar)
-            .length > 0
+          this.toolBar.querySelectorAll(
+            'div.asl.T-I-J3.J-J5-Ji,div.asf.T-I-J3.J-J5-Ji',
+          ).length > 0
         ) {
           img =
             '<img class="f tk3N6e-I-J3" height="20" width="20" src="' +
@@ -120,30 +177,34 @@ class PopupView {
           '<div id="g2tDownArrow" class="G-asx T-I-J3 J-J5-Ji">&nbsp;</div></div></div></div>';
       }
       this.app.utils.log('PopupView:confirmPopup: creating button');
-      this.$toolBar.append(this.html['add_to_trello']);
+      this._appendHtml(this.toolBar, this.html['add_to_trello']);
       needInit = true;
-    } else if ($button.first().is(':visible')) {
+    } else if (button.offsetParent !== null) {
       this.app.utils.log('PopupView:confirmPopup: button visible');
     } else {
       this.app.utils.log(
         'PopupView:confirmPopup: Button is in an inactive region. Moving...',
       );
       //relocate
-      if ($button.length > 1) {
-        $button.detach(); // In case multiple copies were created
-        if ($popup.length > 1) {
-          $popup.detach(); // In case copies were created
+      const allButtons = document.querySelectorAll('#g2tButton');
+      if (allButtons.length > 1) {
+        allButtons.forEach(b => b.remove()); // In case multiple copies were created
+        const allPopups = document.querySelectorAll('#g2tPopup');
+        if (allPopups.length > 1) {
+          allPopups.forEach(p => p.remove()); // In case copies were created
         }
       }
       this.app.utils.log('PopupView:confirmPopup: adding Button and Popup');
-      $button.first().appendTo(this.$toolBar);
-      $popup.first().appendTo(this.$toolBar);
+      const singleButton = document.querySelector('#g2tButton');
+      const singlePopup = document.querySelector('#g2tPopup');
+      if (singleButton) this.toolBar.appendChild(singleButton);
+      if (singlePopup) this.toolBar.appendChild(singlePopup);
     }
 
-    if (needInit || $popup.length < 1) {
+    if (needInit || !popup) {
       if (this.html && this.html['popup'] && this.html['popup'].length > 0) {
         this.app.utils.log('PopupView:confirmPopup: adding popup');
-        this.$toolBar.append(this.html['popup']);
+        this._appendHtml(this.toolBar, this.html['popup']);
         // Emit popupLoaded event
         this.app.events.emit('popupLoaded');
         needInit = true;
@@ -152,7 +213,7 @@ class PopupView {
         function confirmPopup_loadFile(html) {
           this.html['popup'] = html;
           this.app.utils.log('PopupView:confirmPopup: creating popup');
-          this.$toolBar.append(html);
+          this._appendHtml(this.toolBar, html);
           this.app.events.emit('popupLoaded');
         }
         const path = 'views/popupView.html';
@@ -171,12 +232,13 @@ class PopupView {
    * "Add card" button to the edge of the window and then center that under the "Add card" button:
    */
   centerPopup(useWidth) {
-    const g2tLeft = this.$g2tButton.position().left;
-    const g2tRight = g2tLeft + this.$g2tButton.width();
-    let g2tCenter = g2tLeft + this.$g2tButton.outerWidth() / 2;
+    // Use native offsetLeft/offsetWidth/offsetParent in place of jQuery .position()/.width()/.offsetParent()
+    const g2tLeft = this.g2tButton.offsetLeft;
+    const g2tRight = g2tLeft + this.g2tButton.offsetWidth;
+    let g2tCenter = g2tLeft + this.g2tButton.offsetWidth / 2;
 
-    const parent = this.$g2tButton.offsetParent();
-    const parentRight = parent.position().left + parent.width();
+    const parentEl = this.g2tButton.offsetParent || document.body;
+    const parentRight = parentEl.offsetLeft + parentEl.offsetWidth;
 
     const length_from_left_k = g2tLeft * 1.5;
     const length_from_right_k = (parentRight - g2tRight) * 1.5;
@@ -186,8 +248,7 @@ class PopupView {
     let newPopupWidth = this.size_k.width.min;
     if (useWidth && useWidth > 0) {
       newPopupWidth = useWidth; // May snap to min if necessary
-      g2tCenter = this.$popup.position().left;
-      g2tCenter += this.$popup.width() / 2;
+      g2tCenter = this.popup.offsetLeft + this.popup.offsetWidth / 2;
     } else if (this.app.persist.popupWidth > 0) {
       newPopupWidth = this.app.persist.popupWidth;
     } else {
@@ -207,8 +268,8 @@ class PopupView {
       newPopupLeft = g2tCenter - newPopupWidth / 2;
     }
 
-    this.$popup.css('width', newPopupWidth + 'px');
-    this.$popup.css('left', newPopupLeft + 'px');
+    this.popup.style.width = newPopupWidth + 'px';
+    this.popup.style.left = newPopupLeft + 'px';
 
     // Store initial popup width
     this.app.persist.popupWidth = newPopupWidth;
@@ -219,9 +280,6 @@ class PopupView {
   }
 
   resetDragResize() {
-    const $g2tDesc = $('#g2tDesc', this.$popup);
-    const $popupBB = $('#g2tPopup', this.$popup);
-    const padding = 95;
     this.$popup.draggable({
       disabled: false,
       containment: 'window',
@@ -236,11 +294,12 @@ class PopupView {
       maxWidth: this.draggable.width.max,
       resize: () => {
         // This will remove the max-height restriction set in CSS, thereby allwing the user to resize freely.
-        if ($('#g2tPopup').css('max-height') != 'inherit') {
-          $('#g2tPopup').css('max-height', 'inherit');
+        const popupEl = document.querySelector('#g2tPopup');
+        if (getComputedStyle(popupEl).maxHeight !== 'inherit') {
+          popupEl.style.maxHeight = 'inherit';
         }
         // Update stored popup width on resize
-        this.app.persist.popupWidth = this.$popup.width();
+        this.app.persist.popupWidth = this.popup.offsetWidth;
       },
       handles: 'w,sw,s,se,e',
     });
@@ -296,15 +355,18 @@ class PopupView {
   }
 
   showPopup() {
-    if (this.$g2tButton && this.$popup) {
-      $(document)
-        .on('keydown' + this.EVENT_LISTENER, event => {
+    if (this.g2tButton && this.popup) {
+      // keydown handler
+      const kdCtrl = this._resetController('keydown');
+      document.addEventListener(
+        'keydown',
+        event => {
           const visible_k = this.popupVisible();
           const periodASCII_k = 46;
           const periodNumPad_k = 110;
           const periodKeyCode_k = 190;
-          const isEscape_k = event.which === $.ui.keyCode.ESCAPE;
-          const isEnter_k = event.which === $.ui.keyCode.ENTER;
+          const isEscape_k = event.key === 'Escape';
+          const isEnter_k = event.key === 'Enter';
           const isPeriodASCII_k = event.which === periodASCII_k;
           const isPeriodNumPad_k = event.which === periodNumPad_k;
           const isPeriodKeyCode_k = event.which === periodKeyCode_k;
@@ -321,57 +383,75 @@ class PopupView {
               this.form.submit();
             }
           }
-        })
-        /* Temporarily disabled to test link clicks
-        .on('mouseup' + this.EVENT_LISTENER, event => {
-          // Click isn't always propagated on Mailbox bar, so using mouseup instead.
-          if (
-            $(event.target).closest('#g2tButton').length == 0 &&
-            $(event.target).closest('#g2tPopup').length == 0 &&
-            g2t_has(this.mouseDownTracker, event.target) &&
-            this.mouseDownTracker[event.target] === 1 &&
-            $(event.target).closest('.ui-autocomplete').length == 0
-          ) {
-            this.mouseDownTracker[event.target] = 0;
-            // Add small delay to allow link clicks to process first
-            setTimeout(() => {
-              this.hidePopup();
-            }, 10);
-          }
-          // Clear mouseDownTracker for any click
-          if (g2t_has(this.mouseDownTracker, event.target)) {
-            this.mouseDownTracker[event.target] = 0;
-          }
-        })
-        */
-        .on('mousedown' + this.EVENT_LISTENER, event => {
+        },
+        { signal: kdCtrl.signal },
+      );
+
+      /* Temporarily disabled to test link clicks
+      const muCtrl = this._resetController('mouseup');
+      document.addEventListener('mouseup', event => {
+        // Click isn't always propagated on Mailbox bar, so using mouseup instead.
+        if (
+          !event.target.closest('#g2tButton') &&
+          !event.target.closest('#g2tPopup') &&
+          g2t_has(this.mouseDownTracker, event.target) &&
+          this.mouseDownTracker[event.target] === 1 &&
+          !event.target.closest('.ui-autocomplete')
+        ) {
+          this.mouseDownTracker[event.target] = 0;
+          // Add small delay to allow link clicks to process first
+          setTimeout(() => {
+            this.hidePopup();
+          }, 10);
+        }
+        // Clear mouseDownTracker for any click
+        if (g2t_has(this.mouseDownTracker, event.target)) {
+          this.mouseDownTracker[event.target] = 0;
+        }
+      }, { signal: muCtrl.signal });
+      */
+
+      // mousedown handler
+      const mdCtrl = this._resetController('mousedown');
+      document.addEventListener(
+        'mousedown',
+        event => {
           // Click isn't always propagated on Mailbox bar, so using mouseup instead
           if (
-            $(event.target).closest('#g2tButton').length == 0 &&
-            $(event.target).closest('#g2tPopup').length == 0
+            !event.target.closest('#g2tButton') &&
+            !event.target.closest('#g2tPopup')
           ) {
             this.mouseDownTracker[event.target] = 1;
           }
-        })
-        .on('focusin' + this.EVENT_LISTENER, event => {
+        },
+        { signal: mdCtrl.signal },
+      );
+
+      // focusin handler
+      const fiCtrl = this._resetController('focusin');
+      document.addEventListener(
+        'focusin',
+        event => {
           // Only hide popup if focus is outside both the button and popup
           // AND the target is not inside the popup (additional safety check)
           if (
-            $(event.target).closest('#g2tButton').length == 0 &&
-            $(event.target).closest('#g2tPopup').length == 0 &&
-            !$(event.target).is('#g2tPopup, #g2tPopup *')
+            !event.target.closest('#g2tButton') &&
+            !event.target.closest('#g2tPopup') &&
+            !event.target.matches('#g2tPopup, #g2tPopup *')
           ) {
             this.hidePopup();
           }
-        });
+        },
+        { signal: fiCtrl.signal },
+      );
 
       //  this.centerPopup(); // Did this here if posDirty was true
 
       // resetting the max height on load.
-      $('#g2tPopup').css('max-height', '564px');
+      document.querySelector('#g2tPopup').style.maxHeight = '564px';
       this.mouseDownTracker = {};
 
-      this.$popup.show();
+      this.popup.style.display = 'block';
 
       this.app.events.emit('onPopupVisible');
     }
@@ -379,26 +459,32 @@ class PopupView {
 
   toggleActiveMouseDown(elm) {
     const activeDiv = elm;
-    if (!$(activeDiv).hasClass('active-mouseDown')) {
-      $(activeDiv).addClass('active-mouseDown');
+    if (!activeDiv.classList.contains('active-mouseDown')) {
+      activeDiv.classList.add('active-mouseDown');
     } else {
-      $(activeDiv).removeClass('active-mouseDown');
+      activeDiv.classList.remove('active-mouseDown');
     }
   }
 
   hidePopup() {
-    if (this.$g2tButton && this.$popup) {
-      $(document).off(this.EVENT_LISTENER); // Turns off everything in namespace
-      this.$popup.hide();
+    if (this.g2tButton && this.popup) {
+      // Abort all document-level controllers
+      ['keydown', 'mouseup', 'mousedown', 'focusin'].forEach(name => {
+        if (this.controllers[name]) {
+          this.controllers[name].abort();
+          this.controllers[name] = null;
+        }
+      });
+      this.popup.style.display = 'none';
     }
   }
 
   popupVisible() {
     let visible = false;
     if (
-      this.$g2tButton &&
-      this.$popup &&
-      this.$popup.css('display') === 'block'
+      this.g2tButton &&
+      this.popup &&
+      getComputedStyle(this.popup).display === 'block'
     ) {
       visible = true;
     }
@@ -434,33 +520,33 @@ class PopupView {
    * This catches cases where Gmail's DOM changes orphan our button
    */
   validateButtonState() {
-    const $button = $('#g2tButton');
+    const button = document.querySelector('#g2tButton');
 
     // No button at all - handleDetectButton will create it
-    if ($button.length === 0) {
+    if (!button) {
       return;
     }
 
     // Check 1: Is button attached to the document?
-    if (!$.contains(document.documentElement, $button[0])) {
+    if (!document.documentElement.contains(button)) {
       this.app.utils.log(
         'periodicChecks: Button exists but is detached from DOM. Removing orphan...',
       );
-      $button.remove();
-      $('#g2tPopup').remove(); // Remove popup too
+      button.remove();
+      document.querySelector('#g2tPopup')?.remove();
       return;
     }
 
     // Check 2: Is button in the correct toolbar?
-    const $toolbar = $("[gh='mtb']").first();
-    if ($toolbar.length > 0) {
-      const $buttonInToolbar = $toolbar.find('#g2tButton');
-      if ($buttonInToolbar.length === 0) {
+    const toolbar = document.querySelector("[gh='mtb']");
+    if (toolbar) {
+      const buttonInToolbar = toolbar.querySelector('#g2tButton');
+      if (!buttonInToolbar) {
         this.app.utils.log(
           'periodicChecks: Button exists but not in active toolbar. Re-injecting...',
         );
-        $button.remove();
-        $('#g2tPopup').remove();
+        button.remove();
+        document.querySelector('#g2tPopup')?.remove();
         this.handleDetectButton();
         return;
       }
@@ -468,7 +554,7 @@ class PopupView {
 
     // Check 3: Does button have event binding marker?
     // Use marker attribute instead of jQuery internals
-    if (!$button.attr('data-g2t-bound')) {
+    if (!button.hasAttribute('data-g2t-bound')) {
       this.app.utils.log(
         'periodicChecks: Button missing event binding marker. Re-binding...',
       );
@@ -480,7 +566,7 @@ class PopupView {
     }
 
     // Check 4: Is button visible?
-    if (!$button.is(':visible')) {
+    if (button.offsetParent === null) {
       this.app.utils.log(
         'periodicChecks: Button exists but not visible. May be in wrong location...',
       );
@@ -543,12 +629,18 @@ class PopupView {
     // Attach reload button handler after message is shown
     // Use setTimeout to ensure DOM is ready
     setTimeout(() => {
-      $('#reload-button')
-        .off('click')
-        .on('click', () => {
-          // Use window.location.reload() which works even when extension context is invalidated
-          window.location.reload();
-        });
+      const reloadBtn = document.querySelector('#reload-button');
+      if (reloadBtn) {
+        const reloadCtrl = this._resetController('reload');
+        reloadBtn.addEventListener(
+          'click',
+          () => {
+            // Use window.location.reload() which works even when extension context is invalidated
+            window.location.reload();
+          },
+          { signal: reloadCtrl.signal },
+        );
+      }
     }, 100);
   }
 
@@ -562,7 +654,9 @@ class PopupView {
 
   handleDetectButton() {
     if (this.app.gmailView.preDetect()) {
-      this.$toolBar = this.app.gmailView.$toolBar;
+      // GmailView (Lane 3) still holds a jQuery $toolBar; unwrap to native Element.
+      const jqToolBar = this.app.gmailView.$toolBar;
+      this.toolBar = jqToolBar && jqToolBar[0] ? jqToolBar[0] : null;
       this.finalCreatePopup(); // Moved from init() to here
     }
   }
@@ -580,7 +674,7 @@ class PopupView {
     }
 
     // Reset toolbar reference
-    this.$toolBar = null;
+    this.toolBar = null;
 
     // The actual redraw will happen via handleDetectButton in next periodic check
     // or immediately if detect is called
@@ -615,10 +709,10 @@ class PopupView {
 
   handlePopupLoaded() {
     // This is the DOM-dependent code that used to be at the end of init() (from init_popup)
-    this.$g2tButton = $('#g2tButton');
-    this.$popup = $('#g2tPopup');
-    this.$popupMessage = $('.popupMsg', this.$popup);
-    this.$popupContent = $('.content', this.$popup);
+    this.g2tButton = document.querySelector('#g2tButton');
+    this.popup = document.querySelector('#g2tPopup');
+    this.popupMessage = this.popup.querySelector('.popupMsg');
+    this.popupContent = this.popup.querySelector('.content');
     this.centerPopup();
     this.isInitialized = true;
 
@@ -641,15 +735,20 @@ class PopupView {
       this.form.onDomReady();
     }
 
-    $('#close-button', this.$popup)
-      .off('click')
-      .on('click', () => {
-        this.hidePopup();
+    // close button
+    const closeBtn = this.popup.querySelector('#close-button');
+    if (closeBtn) {
+      const closeBtnCtrl = this._resetController('closeBtn');
+      closeBtn.addEventListener('click', () => this.hidePopup(), {
+        signal: closeBtnCtrl.signal,
       });
+    }
 
-    this.$g2tButton
-      .off('mousedown')
-      .on('mousedown', event => {
+    // g2tButton: mousedown / mouseenter / mouseleave
+    const btnMdCtrl = this._resetController('g2tButtonMousedown');
+    this.g2tButton.addEventListener(
+      'mousedown',
+      event => {
         if (this.app.utils.modKey(event)) {
           // TODO (Ace, 28-Mar-2017): Figure out how to reset layout here!
         } else {
@@ -659,249 +758,371 @@ class PopupView {
             this.showPopup();
           }
         }
-      })
-      .on('mouseenter', function () {
-        $(this).addClass('T-I-JW');
-      })
-      .on('mouseleave', function () {
-        $(this).removeClass('T-I-JW');
-      })
-      .attr('data-g2t-bound', '1'); // Mark as bound
+      },
+      { signal: btnMdCtrl.signal },
+    );
 
-    const $board = $('#g2tBoard', this.$popup);
-    $board.off('change').on('change', () => {
-      const boardId = $board.val();
-      const $list = $('#g2tList', this.$popup);
-      const $card = $('#g2tCard', this.$popup);
-      const $labels = $('#g2t_label', this.$popup);
-      const $members = $('#g2tMembers', this.$popup);
-      if (boardId === '_') {
-        $board.val('');
-      }
-      if (
-        boardId === '_' ||
-        boardId === '' ||
-        boardId !== this.app.persist.boardId
-      ) {
-        $members.html('').hide();
-        $labels.html('').hide();
-        $list
-          .html($('<option value="">...please pick a board...</option>'))
-          .val('');
-        $card
-          .html($('<option value="">...please pick a list...</option>'))
-          .val('');
-        this.app.persist.labelsId = '';
-        this.app.persist.listId = '';
-        this.app.persist.cardId = '';
-        this.app.persist.boardId = boardId;
-        this.form.updateSubmitAvailable();
-      } else {
-        $members.hide();
-        $labels.hide();
-      }
-      if (this.form.comboBox) this.form.comboBox('updateValue');
-      this.app.events.emit('boardChanged', { boardId });
-    });
+    const btnMeCtrl = this._resetController('g2tButtonMouseenter');
+    this.g2tButton.addEventListener(
+      'mouseenter',
+      function (evt) {
+        evt.currentTarget.classList.add('T-I-JW');
+      },
+      { signal: btnMeCtrl.signal },
+    );
 
-    const $list = $('#g2tList', this.$popup);
-    $list.off('change').on('change', () => {
-      const listId = $list.val();
-      this.app.persist.listId = listId;
-      this.form.updateSubmitAvailable();
-      if (this.form.comboBox) this.form.comboBox('updateValue');
-      this.app.events.emit('listChanged', { listId });
-    });
+    const btnMlCtrl = this._resetController('g2tButtonMouseleave');
+    this.g2tButton.addEventListener(
+      'mouseleave',
+      function (evt) {
+        evt.currentTarget.classList.remove('T-I-JW');
+      },
+      { signal: btnMlCtrl.signal },
+    );
 
-    $('#g2tPosition', this.$popup)
-      .off('change')
-      .on('change', event => {
-        $('#' + $(event.target).attr('next-select'))
-          .find('input')
-          .trigger('focus');
-      })
-      .off('keyup')
-      .on('keyup', event => {
-        if (event.which == 13) {
-          $('#' + $(event.target).attr('next-select'))
-            .find('input')
-            .trigger('focus');
-        }
-      });
+    this.g2tButton.setAttribute('data-g2t-bound', '1'); // Mark as bound
 
-    $('#g2tCard', this.$popup)
-      .off('change')
-      .on('change', () => {
-        const $card = $('#g2tCard', this.$popup).find(':selected').first();
-        const cardId = $card.val() || '';
-        this.app.persist.cardId = cardId;
-
-        // Set card-derived temp values directly
-        this.app.temp.cardPos = $card.prop('pos') || '';
-        this.app.temp.cardMembers = $card.prop('members') || '';
-        this.app.temp.cardLabels = $card.prop('labels') || '';
-
-        if (this.form.comboBox) this.form.comboBox('updateValue');
-      });
-
-    $('#g2tDue_Shortcuts', this.$popup)
-      .off('change')
-      .on('change', event => {
-        const dayOfWeek_k = {
-          sun: 0,
-          sunday: 0,
-          mon: 1,
-          monday: 1,
-          tue: 2,
-          tuesday: 2,
-          wed: 3,
-          wednesday: 3,
-          thu: 4,
-          thursday: 4,
-          fri: 5,
-          friday: 5,
-          sat: 6,
-          saturday: 6,
-        };
-        const pad0 = (str = '', n = 2) => {
-          return ('0'.repeat(n) + str).slice(-n);
-        };
-        const dom_date_format = (d = new Date()) => {
-          return `${d.getFullYear()}-${pad0(d.getMonth() + 1)}-${pad0(
-            d.getDate(),
-          )}`;
-        };
-        const dom_time_format = (d = new Date()) => {
-          return `${pad0(d.getHours())}:${pad0(d.getMinutes())}`;
-        };
-
-        const due_k = ($(event.target).val() || '').split(' ');
-        let d = new Date();
-        const [due_date, due_time] = due_k || [];
-        let new_date = '';
-        let new_time = '';
-
-        if (due_date.substr(1, 1) === '+') {
-          d.setDate(d.getDate() + Number.parseInt(due_date.substr(2), 10));
-          new_date = dom_date_format(d);
-        } else if (due_date.substr(1, 1) === '=') {
-          d.setDate(d.getDate() + 1);
-          const weekday_k = due_date.substr(2).toLowerCase();
-          if (weekday_k === '0') {
-            new_date = '';
+    // board change
+    const boardEl = this.popup.querySelector('#g2tBoard');
+    if (boardEl) {
+      const boardCtrl = this._resetController('boardChange');
+      boardEl.addEventListener(
+        'change',
+        () => {
+          const boardId = boardEl.value;
+          const listEl = this.popup.querySelector('#g2tList');
+          const cardEl = this.popup.querySelector('#g2tCard');
+          const labelsEl = this.popup.querySelector('#g2t_label');
+          const membersEl = this.popup.querySelector('#g2tMembers');
+          if (boardId === '_') {
+            boardEl.value = '';
+          }
+          if (
+            boardId === '_' ||
+            boardId === '' ||
+            boardId !== this.app.persist.boardId
+          ) {
+            membersEl.replaceChildren();
+            membersEl.style.display = 'none';
+            labelsEl.replaceChildren();
+            labelsEl.style.display = 'none';
+            const listOpt = new Option('...please pick a board...', '');
+            listEl.replaceChildren(listOpt);
+            listEl.value = '';
+            const cardOpt = new Option('...please pick a list...', '');
+            cardEl.replaceChildren(cardOpt);
+            cardEl.value = '';
+            this.app.persist.labelsId = '';
+            this.app.persist.listId = '';
+            this.app.persist.cardId = '';
+            this.app.persist.boardId = boardId;
+            this.form.updateSubmitAvailable();
           } else {
-            const weekday_num_k = dayOfWeek_k[weekday_k];
-            while (d.getDay() !== weekday_num_k) {
-              d.setDate(d.getDate() + 1);
-            }
+            membersEl.style.display = 'none';
+            labelsEl.style.display = 'none';
+          }
+          if (this.form.comboBox) this.form.comboBox('updateValue');
+          this.app.events.emit('boardChanged', { boardId });
+        },
+        { signal: boardCtrl.signal },
+      );
+    }
+
+    // list change
+    const listEl = this.popup.querySelector('#g2tList');
+    if (listEl) {
+      const listCtrl = this._resetController('listChange');
+      listEl.addEventListener(
+        'change',
+        () => {
+          const listId = listEl.value;
+          this.app.persist.listId = listId;
+          this.form.updateSubmitAvailable();
+          if (this.form.comboBox) this.form.comboBox('updateValue');
+          this.app.events.emit('listChanged', { listId });
+        },
+        { signal: listCtrl.signal },
+      );
+    }
+
+    // position select: change + keyup
+    const positionEl = this.popup.querySelector('#g2tPosition');
+    if (positionEl) {
+      const posChangeCtrl = this._resetController('positionChange');
+      positionEl.addEventListener(
+        'change',
+        event => {
+          document
+            .querySelector('#' + event.target.getAttribute('next-select'))
+            ?.querySelector('input')
+            ?.focus();
+        },
+        { signal: posChangeCtrl.signal },
+      );
+      const posKeyupCtrl = this._resetController('positionKeyup');
+      positionEl.addEventListener(
+        'keyup',
+        event => {
+          if (event.which == 13) {
+            document
+              .querySelector('#' + event.target.getAttribute('next-select'))
+              ?.querySelector('input')
+              ?.focus();
+          }
+        },
+        { signal: posKeyupCtrl.signal },
+      );
+    }
+
+    // card change
+    const cardEl = this.popup.querySelector('#g2tCard');
+    if (cardEl) {
+      const cardCtrl = this._resetController('cardChange');
+      cardEl.addEventListener(
+        'change',
+        () => {
+          const selectedOption = cardEl.options[cardEl.selectedIndex];
+          const cardId = selectedOption?.value || '';
+          this.app.persist.cardId = cardId;
+
+          // Set card-derived temp values directly
+          this.app.temp.cardPos = selectedOption?.pos || '';
+          this.app.temp.cardMembers = selectedOption?.members || '';
+          this.app.temp.cardLabels = selectedOption?.labels || '';
+
+          if (this.form.comboBox) this.form.comboBox('updateValue');
+        },
+        { signal: cardCtrl.signal },
+      );
+    }
+
+    // due date shortcuts
+    const dueShortsEl = this.popup.querySelector('#g2tDue_Shortcuts');
+    if (dueShortsEl) {
+      const dueShortCtrl = this._resetController('dueShortcuts');
+      dueShortsEl.addEventListener(
+        'change',
+        event => {
+          const dayOfWeek_k = {
+            sun: 0,
+            sunday: 0,
+            mon: 1,
+            monday: 1,
+            tue: 2,
+            tuesday: 2,
+            wed: 3,
+            wednesday: 3,
+            thu: 4,
+            thursday: 4,
+            fri: 5,
+            friday: 5,
+            sat: 6,
+            saturday: 6,
+          };
+          const pad0 = (str = '', n = 2) => {
+            return ('0'.repeat(n) + str).slice(-n);
+          };
+          const dom_date_format = (d = new Date()) => {
+            return `${d.getFullYear()}-${pad0(d.getMonth() + 1)}-${pad0(
+              d.getDate(),
+            )}`;
+          };
+          const dom_time_format = (d = new Date()) => {
+            return `${pad0(d.getHours())}:${pad0(d.getMinutes())}`;
+          };
+
+          const due_k = (event.target.value || '').split(' ');
+          let d = new Date();
+          const [due_date, due_time] = due_k || [];
+          let new_date = '';
+          let new_time = '';
+
+          if (due_date.substr(1, 1) === '+') {
+            d.setDate(d.getDate() + Number.parseInt(due_date.substr(2), 10));
             new_date = dom_date_format(d);
-          }
-        } else {
-          this.app.utils.log(
-            `due_Shortcuts:change: Unknown due date shortcut: "${due_date}"`,
-          );
-        }
-
-        if (due_time.substr(2, 1) === '+') {
-          d.setTime(d.getTime() + Number.parseInt(due_time.substr(3), 10));
-          new_time = dom_time_format(d);
-        } else if (due_time.substr(2, 1) === '=') {
-          if (due_time.substr(3) === '0') {
-            new_time = '';
+          } else if (due_date.substr(1, 1) === '=') {
+            d.setDate(d.getDate() + 1);
+            const weekday_k = due_date.substr(2).toLowerCase();
+            if (weekday_k === '0') {
+              new_date = '';
+            } else {
+              const weekday_num_k = dayOfWeek_k[weekday_k];
+              while (d.getDay() !== weekday_num_k) {
+                d.setDate(d.getDate() + 1);
+              }
+              new_date = dom_date_format(d);
+            }
           } else {
-            const am_k = due_time.substr(0, 1).toLowerCase() === 'a';
-            const hhmm_k = due_time.substr(3).split(':');
-            let hours = Number.parseInt(hhmm_k[0], 10);
-            if (hours === 12) {
-              hours = 0;
-            }
-            if (!am_k) {
-              hours += 12;
-            }
-            new_time =
-              ('0' + hours.toString()).substr(-2) +
-              ':' +
-              ('0' + (hhmm_k[1] || 0).toString()).substr(-2);
+            this.app.utils.log(
+              `due_Shortcuts:change: Unknown due date shortcut: "${due_date}"`,
+            );
           }
-        } else {
-          this.app.utils.log(
-            `due_Shortcuts:change: Unknown due time shortcut: "${due_time}"`,
-          );
-        }
 
-        const $dueDate = $('#g2tDue_Date', this.$popup);
-        const $dueTime = $('#g2tDue_Time', this.$popup);
-        if (new_date.length > 0) {
-          $dueDate.val(new_date);
-        }
-        if (new_time.length > 0) {
-          $dueTime.val(new_time);
-        }
-      });
+          if (due_time.substr(2, 1) === '+') {
+            d.setTime(d.getTime() + Number.parseInt(due_time.substr(3), 10));
+            new_time = dom_time_format(d);
+          } else if (due_time.substr(2, 1) === '=') {
+            if (due_time.substr(3) === '0') {
+              new_time = '';
+            } else {
+              const am_k = due_time.substr(0, 1).toLowerCase() === 'a';
+              const hhmm_k = due_time.substr(3).split(':');
+              let hours = Number.parseInt(hhmm_k[0], 10);
+              if (hours === 12) {
+                hours = 0;
+              }
+              if (!am_k) {
+                hours += 12;
+              }
+              new_time =
+                ('0' + hours.toString()).substr(-2) +
+                ':' +
+                ('0' + (hhmm_k[1] || 0).toString()).substr(-2);
+            }
+          } else {
+            this.app.utils.log(
+              `due_Shortcuts:change: Unknown due time shortcut: "${due_time}"`,
+            );
+          }
 
-    $('#g2tSubmit', this.$popup)
-      .off('click')
-      .on('click', () => {
-        this.form.submit();
-      });
+          const dueDateEl = this.popup.querySelector('#g2tDue_Date');
+          const dueTimeEl = this.popup.querySelector('#g2tDue_Time');
+          if (new_date.length > 0) {
+            dueDateEl.value = new_date;
+          }
+          if (new_time.length > 0) {
+            dueTimeEl.value = new_time;
+          }
+        },
+        { signal: dueShortCtrl.signal },
+      );
+    }
 
-    $('#g2tSignOut', this.$popup)
-      .off('click')
-      .on('click', () => {
-        this.app.events.emit('requestDeauthorizeTrello');
+    // submit button
+    const submitEl = this.popup.querySelector('#g2tSubmit');
+    if (submitEl) {
+      const submitCtrl = this._resetController('submit');
+      submitEl.addEventListener('click', () => this.form.submit(), {
+        signal: submitCtrl.signal,
       });
+    }
 
-    $('#g2tAuthorize', this.$popup)
-      .off('click')
-      .on('click', () => {
-        this.app.events.emit('checkTrelloAuthorized');
-      });
+    // sign out
+    const signOutEl = this.popup.querySelector('#g2tSignOut');
+    if (signOutEl) {
+      const signOutCtrl = this._resetController('signOut');
+      signOutEl.addEventListener(
+        'click',
+        () => this.app.events.emit('requestDeauthorizeTrello'),
+        { signal: signOutCtrl.signal },
+      );
+    }
 
-    $('#addToTrello', this.$popup)
-      .off('click')
-      .on('click', () => {
-        this.form.submit();
-      });
+    // authorize
+    const authorizeEl = this.popup.querySelector('#g2tAuthorize');
+    if (authorizeEl) {
+      const authorizeCtrl = this._resetController('authorize');
+      authorizeEl.addEventListener(
+        'click',
+        () => this.app.events.emit('checkTrelloAuthorized'),
+        { signal: authorizeCtrl.signal },
+      );
+    }
 
-    // Temp data handlers
-    $('#g2tPosition', this.$popup)
-      .off('change')
-      .on('change', () => {
-        this.app.temp.position = $('#g2tPosition', this.$popup).val();
+    // addToTrello button
+    const addToTrelloEl = this.popup.querySelector('#addToTrello');
+    if (addToTrelloEl) {
+      const addToTrelloCtrl = this._resetController('addToTrello');
+      addToTrelloEl.addEventListener('click', () => this.form.submit(), {
+        signal: addToTrelloCtrl.signal,
       });
+    }
 
-    $('#g2tDue_Date', this.$popup)
-      .off('change')
-      .on('change', () => {
-        this.app.temp.dueDate = $('#g2tDue_Date', this.$popup).val();
-      });
+    // position temp data handler
+    const positionTempEl = this.popup.querySelector('#g2tPosition');
+    if (positionTempEl) {
+      const posTempCtrl = this._resetController('positionTemp');
+      positionTempEl.addEventListener(
+        'change',
+        () => {
+          this.app.temp.position =
+            this.popup.querySelector('#g2tPosition').value;
+        },
+        { signal: posTempCtrl.signal },
+      );
+    }
 
-    $('#g2tDue_Time', this.$popup)
-      .off('change')
-      .on('change', () => {
-        this.app.temp.dueTime = $('#g2tDue_Time', this.$popup).val();
-      });
+    // due date temp handler
+    const dueDateEl = this.popup.querySelector('#g2tDue_Date');
+    if (dueDateEl) {
+      const dueDateCtrl = this._resetController('dueDate');
+      dueDateEl.addEventListener(
+        'change',
+        () => {
+          this.app.temp.dueDate =
+            this.popup.querySelector('#g2tDue_Date').value;
+        },
+        { signal: dueDateCtrl.signal },
+      );
+    }
 
-    $('#g2tTitle', this.$popup)
-      .off('input')
-      .on('input', () => {
-        this.app.temp.title = $('#g2tTitle', this.$popup).val();
-        this.form.updateSubmitAvailable();
-      });
+    // due time temp handler
+    const dueTimeEl = this.popup.querySelector('#g2tDue_Time');
+    if (dueTimeEl) {
+      const dueTimeCtrl = this._resetController('dueTime');
+      dueTimeEl.addEventListener(
+        'change',
+        () => {
+          this.app.temp.dueTime =
+            this.popup.querySelector('#g2tDue_Time').value;
+        },
+        { signal: dueTimeCtrl.signal },
+      );
+    }
 
-    $('#g2tDesc', this.$popup)
-      .off('input')
-      .on('input', () => {
-        this.app.temp.description = $('#g2tDesc', this.$popup).val();
-      });
+    // title input
+    const titleEl = this.popup.querySelector('#g2tTitle');
+    if (titleEl) {
+      const titleCtrl = this._resetController('title');
+      titleEl.addEventListener(
+        'input',
+        () => {
+          this.app.temp.title = this.popup.querySelector('#g2tTitle').value;
+          this.form.updateSubmitAvailable();
+        },
+        { signal: titleCtrl.signal },
+      );
+    }
+
+    // description input
+    const descEl = this.popup.querySelector('#g2tDesc');
+    if (descEl) {
+      const descCtrl = this._resetController('desc');
+      descEl.addEventListener(
+        'input',
+        () => {
+          this.app.temp.description =
+            this.popup.querySelector('#g2tDesc').value;
+        },
+        { signal: descCtrl.signal },
+      );
+    }
 
     // Attachment and image checkbox handlers (using event delegation for dynamic content)
     ['attachment', 'image'].forEach(tag => {
-      $(`#g2t_${tag}`, this.$popup)
-        .off('change', 'input[type="checkbox"]')
-        .on('change', 'input[type="checkbox"]', () => {
-          this.updateAttachmentData(tag);
-        });
+      const groupEl = this.popup.querySelector(`#g2t_${tag}`);
+      if (groupEl) {
+        const tagCtrl = this._resetController(`tag_${tag}`);
+        groupEl.addEventListener(
+          'change',
+          evt => {
+            if (evt.target.matches('input[type="checkbox"]')) {
+              this.updateAttachmentData(tag);
+            }
+          },
+          { signal: tagCtrl.signal },
+        );
+      }
     });
   }
 
@@ -923,7 +1144,7 @@ class PopupView {
 
   handleGmailViewChanged() {
     this.validateButtonState();
-    if (!this.$toolBar || !document.contains(this.$toolBar[0])) {
+    if (!this.toolBar || !document.contains(this.toolBar)) {
       this.handleDetectButton();
     }
   }

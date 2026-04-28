@@ -18,7 +18,7 @@ Given('a fresh GmailView with initialized properties', function () {
   }
 
   this.instance = new this.G2T.GmailView({ app: this.app });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: this.instance.$root = $('body')
   this.instance.preprocess = {
     a: {
       'test@example.com <test@example.com>': '[Test User](<test@example.com>)',
@@ -40,7 +40,7 @@ Given('runaway is set to {int}', function (value) {
 });
 
 Given('detectToolbar is mocked', function () {
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: this.instance.$root = $('body')
   this.instance.detectToolbar = createMockFn();
 });
 
@@ -126,7 +126,21 @@ When('init is called on the gmailView', function () {
 });
 
 When('handleTrelloUserAndBoardsReady is called', function () {
+  // Lane 4 will update class_utils.markdownify to accept native elements.
+  // Until then, patch it here to wrap native elements with jQuery.
+  const origMarkdownify = this.app.utils.markdownify
+    ? this.app.utils.markdownify.bind(this.app.utils)
+    : null;
+  if (origMarkdownify) {
+    this.app.utils.markdownify = (el, features, preprocess) => {
+      const $el = el && el.nodeType ? $(el) : el;
+      return origMarkdownify($el, features, preprocess);
+    };
+  }
   this.instance.handleTrelloUserAndBoardsReady();
+  if (origMarkdownify) {
+    this.app.utils.markdownify = origMarkdownify;
+  }
 });
 
 When('displayNameAndEmail is called 1000 times', function () {
@@ -168,8 +182,8 @@ When('parseData_onEmailCCIterate is called with {string} and {string}', function
 // ---------------------------------------------------------------------------
 
 Then('the $root is the body element', function () {
-  assert.ok(this.instance.$root && this.instance.$root.length === 1
-    && this.instance.$root[0].tagName === 'BODY');
+  // field renamed $root -> root (native Element)
+  assert.ok(this.instance.root && this.instance.root.tagName === 'BODY');
 });
 
 Then('static ck.uniqueUriVar of GmailView is {string}', function (expected) {
@@ -248,13 +262,19 @@ Then('the selected element matches the appended div', function () {
 });
 
 Then('viewport elements exist in $root', function () {
-  const $viewport = $('.aia, .nH', this.instance.$root);
-  assert.ok($viewport.length > 0);
+  // field renamed $root -> root (native Element)
+  const viewport = this.instance.root
+    ? (this.instance.root.querySelector('.aia') || this.instance.root.querySelector('.nH'))
+    : null;
+  assert.ok(viewport != null);
 });
 
 Then('expanded email elements exist in $root', function () {
-  const $emails = $('.h7', this.instance.$root);
-  assert.ok($emails.length > 0);
+  // field renamed $root -> root (native Element)
+  const emails = this.instance.root
+    ? this.instance.root.querySelectorAll('.h7')
+    : [];
+  assert.ok(emails.length > 0);
 });
 
 Then('{string} listener was added', function (eventName) {
@@ -384,61 +404,61 @@ function buildGmailDOM(doc, opts = {}) {
 
 Given('the DOM contains a Gmail email with subject {string}', function (subject) {
   buildGmailDOM(sharedDocument, { subject });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email with body {string}', function (body) {
   buildGmailDOM(sharedDocument, { body: `<p>${body}</p>` });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email from {string} with address {string}', function (name, email) {
   buildGmailDOM(sharedDocument, { fromName: name, fromEmail: email });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email with timestamp {string}', function (timestamp) {
   buildGmailDOM(sharedDocument, { timestamp });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email with attachment {string}', function (downloadUrl) {
   buildGmailDOM(sharedDocument, { attachmentUrl: downloadUrl });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email with an inline image {string} alt {string}', function (src, alt) {
   buildGmailDOM(sharedDocument, { imgSrc: src, imgAlt: alt });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email with CC {string} at {string}', function (ccName, ccEmail) {
   buildGmailDOM(sharedDocument, { ccName, ccEmail });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains no Gmail email', function () {
   sharedDocument.body.innerHTML = '<div class="empty"></div>';
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email with no attachments', function () {
   buildGmailDOM(sharedDocument, { noAttachments: true });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
 Given('the DOM contains a Gmail email with empty body', function () {
   buildGmailDOM(sharedDocument, { body: '' });
-  this.instance.$root = $('body');
+  this.instance.root = sharedDocument.body; // was: $root = $('body')
   this.instance.parsingData = false;
 });
 
@@ -451,10 +471,21 @@ When('parseData is called on the gmailView', function () {
   if (!this.app.utils.getSelectedText) {
     this.app.utils.getSelectedText = () => '';
   }
-  if (!this.app.utils.markdownify) {
-    this.app.utils.markdownify = ($el, features, preprocess) => ($el.text() || '');
+  // Lane 4 will update class_utils.markdownify to accept native elements.
+  // Until then, patch it here to wrap native elements with jQuery.
+  const origMarkdownify = this.app.utils.markdownify
+    ? this.app.utils.markdownify.bind(this.app.utils)
+    : null;
+  if (origMarkdownify) {
+    this.app.utils.markdownify = (el, features, preprocess) => {
+      const $el = el && el.nodeType ? $(el) : el;
+      return origMarkdownify($el, features, preprocess);
+    };
   }
   this._parsedData = this.instance.parseData({ fullName: 'Test User' });
+  if (origMarkdownify) {
+    this.app.utils.markdownify = origMarkdownify;
+  }
 });
 
 // ---------------------------------------------------------------------------

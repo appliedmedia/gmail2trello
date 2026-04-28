@@ -20,7 +20,7 @@ class GmailView {
 
     this.LAYOUT_DEFAULT = 0;
     this.LAYOUT_SPLIT = 1;
-    this.$root = null;
+    this.root = null; // was: this.$root
     this.parsingData = false;
     this.runaway = 0;
 
@@ -53,6 +53,20 @@ class GmailView {
       // emailEmbeddedTitle: ".T-I.J-J5-Ji.aQv.T-I-ax7.L3.a5q",
       // emailEmbeddedNameAttr: "aria-label",
     };
+  }
+
+  // Private helper: collect subsequent sibling elements matching a CSS selector.
+  // Replaces jQuery's .nextAll(sel) for the image-embedded walk.
+  _nextAllMatching(el, sel) {
+    const results = [];
+    let sibling = el.nextElementSibling;
+    while (sibling) {
+      if (sibling.matches(sel)) {
+        results.push(sibling);
+      }
+      sibling = sibling.nextElementSibling;
+    }
+    return results;
   }
 
   // Callback methods for detectToolbar
@@ -138,15 +152,17 @@ class GmailView {
 
   // Callback methods for parseData
   parseData_onVisibleMailEach(index, element) {
-    const $this = $(element);
-    if (this.$visibleMail === null && $this.offset().top >= this.y0) {
-      this.$visibleMail = $this;
+    if (
+      this.visibleMail === null &&
+      element.getBoundingClientRect().top + window.scrollY >= this.y0
+    ) {
+      this.visibleMail = element; // was: this.$visibleMail = $(element)
     }
   }
 
   parseData_onEmailCCEach(index, element) {
-    const email = ($(element).attr('email') || '').trim();
-    let name = ($(element).attr('name') || '').trim();
+    const email = (element.getAttribute('email') || '').trim();
+    let name = (element.getAttribute('name') || '').trim();
     // NOTE (Ace, 2021-01-04): Replacing NAME of "me" with Trello ID name (may want to confirm email match too?):
     if (name == 'me') {
       if (this.fullName_k) {
@@ -169,7 +185,7 @@ class GmailView {
   }
 
   parseData_onAttachmentEach(index, element) {
-    const item_k = $(element).attr('download_url');
+    const item_k = element.getAttribute('download_url');
     if (item_k?.length > 0) {
       const attachment = item_k.match(/^([^:]+)\s*:\s*([^:]+)\s*:\s*(.+)$/);
       if (attachment && attachment.length > 3) {
@@ -191,7 +207,7 @@ class GmailView {
       // We didn't have your full name in time to replace it earlier, we'll try now:
       item.name = this.me_name || 'me';
     }
-    $.extend(
+    Object.assign(
       this.preprocess['a'],
       this.make_preprocess_mailto(item.name, item.email),
     );
@@ -210,12 +226,15 @@ class GmailView {
   }
 
   parseData_onImageEach(index, element) {
-    const href_k = ($(element).prop('src') || '').trim(); // Was attr
-    const alt_k = $(element).prop('alt') || '';
+    const href_k = (element.src || '').trim(); // Was: $(element).prop('src')
+    const alt_k = element.alt || ''; // Was: $(element).prop('alt')
     // <div id=":cb" class="T-I J-J5-Ji aQv T-I-ax7 L3 a5q" role="button" tabindex="0" aria-label="Download attachment Screen Shot 2020-02-05 at 6.04.37 PM.png" data-tooltip-class="a1V" data-tooltip="Download"><div class="aSK J-J5-Ji aYr"></div></div>}
-    const $divs_k = $(element).nextAll("div[dir='ltr']"); // emailEmbedded
-    const $div1_k = $divs_k.find('.T-I.J-J5-Ji.aQv.T-I-ax7.L3.a5q').first(); // emailEmbeddedTitle
-    const aria_k = $div1_k.attr('aria-label') || ''; // emailEmbeddedNameAttr
+    const divs_k = this._nextAllMatching(element, "div[dir='ltr']"); // emailEmbedded; was: $(element).nextAll("div[dir='ltr']")
+    const div1_k =
+      divs_k.length > 0
+        ? divs_k[0].querySelector('.T-I.J-J5-Ji.aQv.T-I-ax7.L3.a5q')
+        : null; // emailEmbeddedTitle; was: $divs_k.find(...).first()
+    const aria_k = (div1_k ? div1_k.getAttribute('aria-label') : '') || ''; // emailEmbeddedNameAttr
     const aria_split_k = aria_k.split('Download attachment ');
     const aria_name_k = aria_split_k[aria_split_k.length - 1] || '';
     const name_k =
@@ -225,7 +244,7 @@ class GmailView {
     const display_k = this.app.utils.decodeEntities(
       this.app.utils.midTruncate(name_k.trim(), 50, '...'),
     );
-    const type_k = ($(element).prop('type') || 'text/link').trim(); // Was attr
+    const type_k = (element.type || 'text/link').trim(); // Was: $(element).prop('type')
     if (href_k.length > 0 && display_k.length > 0) {
       // Will store as key/value pairs to automatically overide duplicates
       this.emailImage[href_k] = {
@@ -268,7 +287,7 @@ class GmailView {
     // this.app.utils.log('GmailView:preDetect');
 
     this.app.persist.layoutMode = this.LAYOUT_DEFAULT;
-    this.$root = $('body');
+    this.root = document.body; // was: this.$root = $('body')
 
     return this.detectToolbar();
   }
@@ -290,15 +309,15 @@ class GmailView {
     this.app.utils.log('GmailView:forceRedraw - forcing complete redraw');
 
     // Clear any existing button to force recreation
-    const $existingButton = $('#g2tButton');
-    if ($existingButton.length > 0) {
-      $existingButton.remove();
+    const existingButton = document.getElementById('g2tButton'); // was: $('#g2tButton')
+    if (existingButton) {
+      existingButton.remove();
     }
 
     // Clear any existing popup
-    const $existingPopup = $('#g2tPopup');
-    if ($existingPopup.length > 0) {
-      $existingPopup.remove();
+    const existingPopup = document.getElementById('g2tPopup'); // was: $('#g2tPopup')
+    if (existingPopup) {
+      existingPopup.remove();
     }
 
     // Reset state
@@ -318,15 +337,17 @@ class GmailView {
   }
 
   detectToolbar() {
-    let $toolBar = $("[gh='mtb']", this.$root) || null;
+    // was: $("[gh='mtb']", this.$root)
+    let toolBar = this.root ? this.root.querySelector("[gh='mtb']") : null;
 
-    while ($($toolBar).children().length === 1) {
-      $toolBar = $($toolBar).children().first();
+    // was: while ($($toolBar).children().length === 1) { $toolBar = $($toolBar).children().first(); }
+    while (toolBar && toolBar.children.length === 1) {
+      toolBar = toolBar.children[0];
     }
 
-    this.$toolBar = $toolBar;
+    this.$toolBar = toolBar;
 
-    const haveToolBar_k = $toolBar && $toolBar.length > 0;
+    const haveToolBar_k = toolBar != null;
 
     if (!haveToolBar_k) {
       setTimeout(() => this.detectToolbar_onTimeout(), 2000);
@@ -339,28 +360,33 @@ class GmailView {
   }
 
   detectEmailOpeningMode() {
-    this.$expandedEmails = this.$root.find('.h7'); // expandedEmails
+    // was: this.$expandedEmails = this.$root.find('.h7')
+    this.expandedEmails = this.root
+      ? Array.from(this.root.querySelectorAll('.h7'))
+      : [];
 
     const result =
-      this.$toolBar &&
-      this.$toolBar.length > 0 &&
-      this.$expandedEmails &&
-      this.$expandedEmails.length > 0;
+      this.$toolBar && this.expandedEmails && this.expandedEmails.length > 0;
     if (result) {
-      // this.app.utils.log('detectEmailOpeningMode: Detected an email is opening: ' + JSON.stringify(this.$expandedEmails));
+      // this.app.utils.log('detectEmailOpeningMode: Detected an email is opening: ' + JSON.stringify(this.expandedEmails));
 
       //bind events
       let counter = 0;
-      this.$root
-        .find(
-          '.kv:not([g2t_event]), .h7:not([g2t_event]), .kQ:not([g2t_event]), .kx:not([g2t_event])',
-        )
-        .each((index, element) => {
-          counter++;
-          $(element)
-            .attr('g2t_event', 1)
-            .click(() => this.detectEmailOpeningMode_onEmailClick());
-        });
+      // was: this.$root.find('.kv:not([g2t_event]), ...').each(...)
+      const bindTargets = this.root
+        ? Array.from(
+            this.root.querySelectorAll(
+              '.kv:not([g2t_event]), .h7:not([g2t_event]), .kQ:not([g2t_event]), .kx:not([g2t_event])',
+            ),
+          )
+        : [];
+      bindTargets.forEach(element => {
+        counter++;
+        element.setAttribute('g2t_event', 1); // was: $(element).attr('g2t_event', 1)
+        element.addEventListener('click', () =>
+          this.detectEmailOpeningMode_onEmailClick(),
+        ); // was: .click(...)
+      });
       this.app.utils.log(
         'detectEmailOpeningMode: Binded email threads click events: ' +
           counter +
@@ -382,33 +408,42 @@ class GmailView {
 
     this.fullName_k = args?.fullName || '';
 
-    const $viewport = $('.aia, .nH', this.$root).first();
+    // was: $('.aia, .nH', this.$root).first()
+    const viewport =
+      (this.root && this.root.querySelector('.aia')) ||
+      (this.root && this.root.querySelector('.nH')) ||
+      null;
     //  }
-    // this.app.utils.log('GmailView:parseData::viewport: ' + JSON.stringify($viewport));
-    if ($viewport.length == 0) {
+    // this.app.utils.log('GmailView:parseData::viewport: ' + JSON.stringify(viewport));
+    if (!viewport) {
       return;
     }
 
-    this.y0 = $viewport.offset().top;
+    this.y0 = viewport.getBoundingClientRect().top + window.scrollY; // was: $viewport.offset().top
     //this.app.utils.log(y0);
-    this.$visibleMail = null;
+    this.visibleMail = null; // was: this.$visibleMail = null
     // parse expanded emails again
-    $('.h7', this.$root).each((index, element) =>
-      this.parseData_onVisibleMailEach(index, element),
-    );
+    // was: $('.h7', this.$root).each(...)
+    if (this.root) {
+      Array.from(this.root.querySelectorAll('.h7')).forEach((element, index) =>
+        this.parseData_onVisibleMailEach(index, element),
+      );
+    }
 
-    if (!this.$visibleMail) {
+    if (!this.visibleMail) {
       return;
     }
 
     // Grab first email that's visible that we can find:
-    const $email1_k = $('.adn.ads div.gs', this.$visibleMail).first();
+    // was: $('.adn.ads div.gs', this.$visibleMail).first()
+    const email1_k = this.visibleMail.querySelector('.adn.ads div.gs');
 
     // Check for email body first. If we don't have this, then bail.
-    const $emailBody1_k = $('.a3s.aiL', $email1_k).first();
-    if (!$emailBody1_k) {
+    // was: $('.a3s.aiL', $email1_k).first()
+    const emailBody1_k = email1_k ? email1_k.querySelector('.a3s.aiL') : null;
+    if (!emailBody1_k) {
       this.app.utils.log(
-        'GmailView:parseData::emailBody: ' + JSON.stringify($emailBody1_k),
+        'GmailView:parseData::emailBody: ' + JSON.stringify(emailBody1_k),
       );
       return;
     }
@@ -416,18 +451,32 @@ class GmailView {
     this.parsingData = true;
 
     // email ccs which includes from name
-    const $emailCC_k = $('span.g2', $email1_k);
+    // was: $('span.g2', $email1_k)
+    const emailCC_k = email1_k
+      ? Array.from(email1_k.querySelectorAll('span.g2'))
+      : [];
     this.me_email = '';
     this.me_name = '';
     this.emailCC = [];
-    $emailCC_k.each((index, element) =>
+    emailCC_k.forEach((element, index) =>
       this.parseData_onEmailCCEach(index, element),
     );
 
     // email name
-    let $emailFromNameAddress_k = $('span.gD', $email1_k);
-    let emailFromName = ($emailFromNameAddress_k.attr('name') || '').trim();
-    let emailFromAddress = ($emailFromNameAddress_k.attr('email') || '').trim();
+    // was: $('span.gD', $email1_k)
+    const emailFromNameAddress_k = email1_k
+      ? email1_k.querySelector('span.gD')
+      : null;
+    let emailFromName = (
+      emailFromNameAddress_k
+        ? emailFromNameAddress_k.getAttribute('name') || ''
+        : ''
+    ).trim();
+    let emailFromAddress = (
+      emailFromNameAddress_k
+        ? emailFromNameAddress_k.getAttribute('email') || ''
+        : ''
+    ).trim();
     if (
       this.me_name.length < 1 &&
       emailFromName.length > 0 &&
@@ -439,17 +488,23 @@ class GmailView {
 
     // email attachment
     this.attachment = [];
-    $('span.aZo', $email1_k).each((index, element) =>
-      this.parseData_onAttachmentEach(index, element),
-    );
+    // was: $('span.aZo', $email1_k).each(...)
+    if (email1_k) {
+      Array.from(email1_k.querySelectorAll('span.aZo')).forEach(
+        (element, index) => this.parseData_onAttachmentEach(index, element),
+      );
+    }
 
     data.attachment = this.attachment;
 
     // timestamp
-    const $time_k = $('.gH .gK .g3', $email1_k).first();
+    // was: $('.gH .gK .g3', $email1_k).first()
+    const time_k = email1_k ? email1_k.querySelector('.gH .gK .g3') : null;
     const timeAttr_k = (
-      $time_k.length > 0
-        ? $time_k.attr('title') || $time_k.text() || $time_k.attr('alt')
+      time_k
+        ? time_k.getAttribute('title') ||
+          time_k.textContent ||
+          time_k.getAttribute('alt')
         : ''
     ).trim();
 
@@ -473,7 +528,7 @@ class GmailView {
               'timeAsDate_k': timeAsDate_k,
               'timeAsDateInvalid_k': timeAsDateInvalid_k,
               */
-            time_k: $time_k,
+            time_k: time_k,
           }),
       );
     }
@@ -489,8 +544,9 @@ class GmailView {
     )}`;
 
     // subject
-    let $subject = $('.hP', this.$root).first(); // Is above the primary first email, so grab it from root
-    data.subject = ($subject.text() || '').trim();
+    // was: $('.hP', this.$root).first()
+    const subjectEl = this.root ? this.root.querySelector('.hP') : null; // Is above the primary first email, so grab it from root
+    data.subject = (subjectEl ? subjectEl.textContent : '').trim();
 
     // Find emailId via legacy
     // <span data-thread-id="#thread-f:1602441164947422913" data-legacy-thread-id="163d03bfda277ec1" data-legacy-last-message-id="163d03bfda277ec1">Tips for using your new inbox</span>
@@ -504,14 +560,17 @@ class GmailView {
 
     data.emailId = 0;
     do {
-      data.emailId = ($subject.attr(emailIDs_k[iter]) || '').trim(); // Try new Gmail format
+      // was: $subject.attr(emailIDs_k[iter])
+      data.emailId = (
+        subjectEl ? subjectEl.getAttribute(emailIDs_k[iter]) || '' : ''
+      ).trim(); // Try new Gmail format
     } while (!data.emailId && ++iter < ids_len_k);
 
     // OBSOLETE (Ace, 2021-02-27): Don't think this even exists any more:
     if (!data.emailId) {
       // try to find via explicitly named class item:
       var emailIdViaClass =
-        $emailBody1_k[0]?.classList?.[$emailBody1_k.classList?.length - 1];
+        emailBody1_k?.classList?.[emailBody1_k.classList?.length - 1]; // was: $emailBody1_k[0]?.classList?...
       if (emailIdViaClass && emailIdViaClass.length > 1) {
         if (
           emailIdViaClass.charAt(0) === 'm' &&
@@ -557,9 +616,8 @@ class GmailView {
     this.cc_raw = '';
     this.cc_md = '';
 
-    $.each(this.emailCC, (iter, item) =>
-      this.parseData_onEmailCCIterate(iter, item),
-    );
+    // was: $.each(this.emailCC, (iter, item) => ...)
+    this.emailCC.forEach((item, i) => this.parseData_onEmailCCIterate(i, item));
 
     if (this.cc_raw.length > 0) {
       this.cc_raw += '\n';
@@ -573,18 +631,21 @@ class GmailView {
     data.ccAsRaw = this.cc_raw;
     data.ccAsMd = this.cc_md;
 
+    // Pass native element directly; Lane 4 will update markdownify receiver.
+    // was: this.app.utils.markdownify($emailBody1_k, ...)
     data.bodyAsRaw = `${from_raw}:\n\n${
       selectedText ||
-      this.app.utils.markdownify($emailBody1_k, false, this.preprocess)
+      this.app.utils.markdownify(emailBody1_k, false, this.preprocess)
     }`;
     data.bodyAsMd = `${from_md}:\n\n${
       selectedText ||
-      this.app.utils.markdownify($emailBody1_k, true, this.preprocess)
+      this.app.utils.markdownify(emailBody1_k, true, this.preprocess)
     }`;
 
     this.emailImage = {};
 
-    $('img', $emailBody1_k).each((index, element) =>
+    // was: $('img', $emailBody1_k).each(...)
+    Array.from(emailBody1_k.querySelectorAll('img')).forEach((element, index) =>
       this.parseData_onImageEach(index, element),
     );
 

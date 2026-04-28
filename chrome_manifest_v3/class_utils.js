@@ -394,7 +394,7 @@ class Utils {
    * Process headers during markdown processing
    */
   markdownify_onHeaderEach(context) {
-    const nodeName = context.$element.prop('nodeName') || '0';
+    const nodeName = context.element.nodeName || '0';
     if (nodeName && context.element_meets_min_length) {
       const headerLevelText = nodeName.substr(-1);
       const headerLevel = parseInt(headerLevelText, 10);
@@ -410,10 +410,10 @@ class Utils {
    */
   markdownify_onLinkEach(context) {
     const href = (
-      context.$element.attr('href') ||
-      context.$element.prop('href') ||
+      context.element.getAttribute('href') ||
+      context.element.href ||
       ''
-    ).trim(); // Note, prop DOM adds trailing slash to bare URLs changing the input sometimes
+    ).trim(); // Note, .href DOM adds trailing slash to bare URLs changing the input sometimes
     if (href && context.element_meets_min_length) {
       context.toProcess[context.element_text.toLowerCase()] =
         context.self.anchorMarkdownify(context.element_text, href); // Intentionally overwrites duplicates
@@ -445,9 +445,9 @@ class Utils {
    */
   markdownify_processMarkdown(context, elementTag, replaceText) {
     if (context.self.markdownify_featureEnabled(context.features, elementTag)) {
-      $(elementTag, context.$html).each((index, element) => {
-        context.$element = $(element);
-        context.element_text = (context.$element.text() || '').trim();
+      for (const element of context.html.querySelectorAll(elementTag)) {
+        context.element = element;
+        context.element_text = (element.textContent || '').trim();
         context.element_meets_min_length =
           context.element_text.length >= context.min_text_length;
 
@@ -459,7 +459,7 @@ class Utils {
           // Use string replacement (existing behavior)
           context.self.markdownify_onElementEach(context, replaceText);
         }
-      });
+      }
     }
   }
 
@@ -479,10 +479,28 @@ class Utils {
   /**
    * Markdownify a text block
    */
-  markdownify($emailBody, features, preprocess) {
-    if (!$emailBody || $emailBody.length < 1) {
+  markdownify(emailBody, features, preprocess) {
+    if (!emailBody) {
       this.log('markdownify: Require emailBody!');
       return '';
+    }
+
+    // Resolve to a native Element (compat until all callers pass native elements)
+    let nativeBody;
+    if (emailBody instanceof Element) {
+      // Already a native element — preferred path after Lane 3 lands
+      nativeBody = emailBody;
+    } else if (emailBody[0] instanceof Element) {
+      // jQuery wrapper with a real element at [0]
+      nativeBody = emailBody[0];
+    } else {
+      // Fallback: plain mock or legacy jQuery object; build a temporary container
+      const tmpDiv = document.createElement('div');
+      tmpDiv.innerHTML =
+        typeof emailBody.html === 'function'
+          ? emailBody.html()
+          : emailBody.innerHTML || '';
+      nativeBody = tmpDiv;
     }
 
     // Create markdownify context with all constants and state
@@ -494,13 +512,13 @@ class Utils {
       // State variables
       count: 0,
       replacer_dict: preprocess || {}, // Use preprocess data if provided
-      $html: $emailBody,
-      body: $emailBody.html() || '',
+      html: nativeBody,
+      body: nativeBody.innerHTML || '',
       toProcess: {},
 
       // References for clarity
       self: this, // Reference to the Utils class instance
-      $element: null, // Will be set for each element being processed
+      element: null, // Will be set for each element being processed
       element_text: '', // Will be set for each element being processed
       element_meets_min_length: false, // Will be set for each element being processed
       features: features, // Markdown features configuration
@@ -765,7 +783,6 @@ class Utils {
     const ta = document.createElement('textarea');
     ta.value = sourceText;
     return ta.innerHTML;
-    // jQuery way, less safe: return $("<textarea />").text(sourceText).html();
   }
 
   // Callback methods for decodeEntities
@@ -794,7 +811,6 @@ class Utils {
     ta.style.cssText = 'white-space: pre-line;';
     ta.innerHTML = sourceText;
     return ta.value;
-    // jQuery way, less safe: return $("<textarea />").html(sourceText).text();
   }
 
   /**
@@ -856,6 +872,17 @@ class Utils {
    */
   makeAvatarUrl(args) {
     return args?.avatarUrl ? `${args.avatarUrl}/30.png` : '';
+  }
+
+  /**
+   * Return all following siblings of el that match sel
+   */
+  nextAllMatching(el, sel) {
+    const out = [];
+    for (let s = el.nextElementSibling; s; s = s.nextElementSibling) {
+      if (s.matches(sel)) out.push(s);
+    }
+    return out;
   }
 
   // Event binding
