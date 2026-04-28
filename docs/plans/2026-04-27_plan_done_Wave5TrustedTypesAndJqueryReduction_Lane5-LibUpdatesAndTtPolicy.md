@@ -1,7 +1,7 @@
 # Lane 5: Library Updates + Trusted Types Policy
 
 **Date**: 2026-04-27
-**Status**: TODO
+**Status**: DONE
 **Files**: `chrome_manifest_v3/lib/jquery-3.7.1.min.js` (removed),
 `chrome_manifest_v3/lib/jquery-4.0.0.min.js` (added),
 `chrome_manifest_v3/lib/jquery-3.7.1.min.map` (removed),
@@ -12,7 +12,7 @@
 world before `new Gmail(jQuery)`),
 `chrome_manifest_v3/g2t_tt_policy.js` (new helper, prepended to
 ISOLATED world load order)
-**Parent**: [Wave 5 Orch](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Orch.md>)
+**Parent**: [Wave 5 Orch](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Orch.md>)
 
 ## Problem
 

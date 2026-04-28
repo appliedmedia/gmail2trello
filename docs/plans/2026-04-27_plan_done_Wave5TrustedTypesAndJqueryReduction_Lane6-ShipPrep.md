@@ -1,11 +1,11 @@
 # Lane 6: Ship-Prep for 3.2.0.002
 
 **Date**: 2026-04-27
-**Status**: TODO
+**Status**: DONE
 **Files**: `chrome_manifest_v3/manifest.json`, `package.json`,
 `package-lock.json`, `docs/CHANGES.md`,
 `docs/2026-04-27_info_Wave5TestMatrix.md` (new)
-**Parent**: [Wave 5 Orch](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Orch.md>)
+**Parent**: [Wave 5 Orch](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Orch.md>)
 
 ## Problem
 

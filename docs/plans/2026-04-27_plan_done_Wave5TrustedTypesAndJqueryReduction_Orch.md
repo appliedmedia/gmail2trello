@@ -1,7 +1,7 @@
 # Wave 5: Trusted Types Hotfix + jQuery Reduction: Orchestration
 
 **Date**: 2026-04-27
-**Status**: TODO
+**Status**: DONE
 **Branch**: `wave5/tt-and-jquery` (off `main`, after Wave 4 merged at `c74aab2`)
 **Depends on**: Wave 4 done. See
 [Wave 4 Orch](<2026-04-26_plan_done_Wave4ShipPrep_Orch.md>),
@@ -59,31 +59,31 @@ The five sweep-and-update lanes (1, 2, 3, 4, 5) touch disjoint files. They
 can be authored simultaneously. Lane 5 swaps jQuery 4 in last because
 Lanes 1-4 mechanically reduce the breaking-change surface.
 
-* **[Lane 1: class_popupForm.js sweep](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Lane1-PopupFormSweep.md>)**
+* **[Lane 1: class_popupForm.js sweep](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Lane1-PopupFormSweep.md>)**
   * File: `chrome_manifest_v3/views/class_popupForm.js`
   * Output: ~149 jQuery sites converted to native DOM where direct
     equivalents exist. Combobox, jQuery UI tooltip, and a few
     HTML-builder sites remain on jQuery by design.
-* **[Lane 2: class_popupView.js sweep](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Lane2-PopupViewSweep.md>)**
+* **[Lane 2: class_popupView.js sweep](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Lane2-PopupViewSweep.md>)**
   * File: `chrome_manifest_v3/views/class_popupView.js`
   * Output: ~125 jQuery sites converted to native DOM. Event-listener
     bookkeeping (`.off().on()` pairs) preserved via
     `AbortController` + `signal`.
-* **[Lane 3: class_gmailView.js sweep](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Lane3-GmailViewSweep.md>)**
+* **[Lane 3: class_gmailView.js sweep](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Lane3-GmailViewSweep.md>)**
   * File: `chrome_manifest_v3/views/class_gmailView.js`
   * Output: ~50 jQuery sites converted to native DOM. Reads from Gmail's
     DOM (attributes, text, src) move to plain `getAttribute` /
     `textContent` / `querySelector`.
-* **[Lane 4: small-files sweep](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Lane4-SmallFilesSweep.md>)**
+* **[Lane 4: small-files sweep](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Lane4-SmallFilesSweep.md>)**
   * Files: `class_utils.js`, `class_menuControl.js`. Two surgical sites,
     listed by line.
-* **[Lane 5: library updates + TT policy](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Lane5-LibUpdatesAndTtPolicy.md>)**
+* **[Lane 5: library updates + TT policy](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Lane5-LibUpdatesAndTtPolicy.md>)**
   * Files: `lib/jquery-3.7.1.min.js` removed, `lib/jquery-4.0.0.min.js`
     added, `lib/gmail.min.js` replaced with upstream v1.1.16,
     `chrome_manifest_v3/manifest.json` updated, `gmail_loader.js` extended
     to register TT policy in MAIN world, new helper file
     `g2t_tt_policy.js` prepended to ISOLATED world load order.
-* **[Lane 6: ship-prep for 3.2.0.002](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Lane6-ShipPrep.md>)**
+* **[Lane 6: ship-prep for 3.2.0.002](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Lane6-ShipPrep.md>)**
   * Files: `chrome_manifest_v3/manifest.json`, `package.json`,
     `package-lock.json`, `docs/CHANGES.md`,
     `docs/2026-04-26_info_Wave4TestMatrix.md` (or new

@@ -1,9 +1,9 @@
 # Lane 2: class_popupView.js Sweep
 
 **Date**: 2026-04-27
-**Status**: TODO
+**Status**: DONE
 **File**: `chrome_manifest_v3/views/class_popupView.js`
-**Parent**: [Wave 5 Orch](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Orch.md>)
+**Parent**: [Wave 5 Orch](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Orch.md>)
 
 ## Problem
 
@@ -24,7 +24,7 @@ can read native elements directly.
 
 ## Conversion patterns
 
-See [Lane 1: Conversion patterns](<2026-04-27_plan_todo_Wave5TrustedTypesAndJqueryReduction_Lane1-PopupFormSweep.md>)
+See [Lane 1: Conversion patterns](<2026-04-27_plan_done_Wave5TrustedTypesAndJqueryReduction_Lane1-PopupFormSweep.md>)
 for the shared table-as-bullet-list. This lane adds:
 
 * jQuery namespaced events: `$el.on('change.g2tPopupForm', fn)` then
