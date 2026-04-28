@@ -416,11 +416,15 @@ Given('popupView handlePopupLoaded is called', function () {
 
 When('the board select is changed to {string}', function (value) {
   this.app.persist.boardId = ''; // Reset so the change handler fires fully
-  $('#g2tBoard', this.instance.$popup).val(value).trigger('change');
+  const boardEl = sharedDocument.querySelector('#g2tBoard');
+  boardEl.value = value;
+  boardEl.dispatchEvent(new sharedWindow.Event('change', { bubbles: true }));
 });
 
 When('the list select is changed to {string}', function (value) {
-  $('#g2tList', this.instance.$popup).val(value).trigger('change');
+  const listEl = sharedDocument.querySelector('#g2tList');
+  listEl.value = value;
+  listEl.dispatchEvent(new sharedWindow.Event('change', { bubbles: true }));
 });
 
 Then('persist boardId equals {string}', function (expected) {
@@ -453,7 +457,8 @@ Given('the card select has an option with pos members labels', function () {
 });
 
 When('the card select is changed', function () {
-  $('#g2tCard', this.instance.$popup).trigger('change');
+  const cardEl = sharedDocument.querySelector('#g2tCard');
+  cardEl.dispatchEvent(new sharedWindow.Event('change', { bubbles: true }));
 });
 
 Then('app.persist.cardId is set from the card option', function () {
