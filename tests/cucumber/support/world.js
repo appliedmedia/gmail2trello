@@ -37,7 +37,7 @@ const sharedWindow = dom.window;
 const sharedDocument = sharedWindow.document;
 
 // Load jQuery
-const jqueryPath = path.join(__dirname, '../../../chrome_manifest_v3/lib/jquery-3.7.1.min.js');
+const jqueryPath = path.join(__dirname, '../../../chrome_manifest_v3/lib/jquery-4.0.0.min.js');
 sharedWindow.eval(fs.readFileSync(jqueryPath, 'utf8'));
 
 if (!sharedWindow.$ || !sharedWindow.jQuery) {

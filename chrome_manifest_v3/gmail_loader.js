@@ -1,9 +1,33 @@
 // Runs in page context (world: "MAIN"), loaded via manifest.json
 // Bridges gmail.js events to content script via CustomEvent
 (function () {
+  let policy;
+  if (window.trustedTypes && window.trustedTypes.createPolicy) {
+    try {
+      policy = window.trustedTypes.createPolicy('g2t-gmail-html', {
+        createHTML: s => s,
+        createScript: s => s,
+        createScriptURL: s => s,
+      });
+    } catch (_e) {
+      policy = { createHTML: s => s };
+    }
+  } else {
+    policy = { createHTML: s => s };
+  }
+  window.g2tTrustedTypesPolicy = policy;
+
   const waitForGmail = setInterval(() => {
     if (typeof Gmail !== 'undefined' && typeof jQuery !== 'undefined') {
       try {
+        if (jQuery.htmlPrefilter && !jQuery.__g2tHtmlPrefilterHooked) {
+          const inner = jQuery.htmlPrefilter;
+          jQuery.htmlPrefilter = function (html) {
+            return policy.createHTML(inner ? inner(html) : html);
+          };
+          jQuery.__g2tHtmlPrefilterHooked = true;
+        }
+
         const gmail = new Gmail(jQuery);
 
         const emit = (type, data = {}) => {
