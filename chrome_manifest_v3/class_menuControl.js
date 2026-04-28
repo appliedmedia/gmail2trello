@@ -8,6 +8,7 @@ var G2T = G2T || {}; // must be var to guarantee correct scope - do not alter th
 class MenuControl {
   constructor(args) {
     this.app = args.app;
+    this.controller = new AbortController();
   }
 
   static get ck() {
@@ -25,12 +26,23 @@ class MenuControl {
   reset(args = {}) {
     const { selectors, nonexclusive = false } = args;
 
-    if (!this.selectors || Object.keys(this.selectors).length === 0) {
+    if (!selectors) {
       this.app.utils.log('MenuControl: missing required selectors');
       return;
     }
 
-    this.items = jQuery(selectors);
+    // Abort any previously registered listeners before re-binding
+    this.controller.abort();
+    this.controller = new AbortController();
+
+    // Guard against non-string selectors (querySelectorAll requires a string)
+    if (typeof selectors !== 'string') {
+      this.items = [];
+      this.nonexclusive = nonexclusive;
+      return;
+    }
+
+    this.items = document.querySelectorAll(selectors);
     this.nonexclusive = nonexclusive;
 
     for (let i = 0; i < this.items.length; i++) {
@@ -38,27 +50,38 @@ class MenuControl {
     }
 
     this.bindEvents();
+    // Legacy compat shim: allow instanceof checks expecting items.click to exist
+    if (!this.items.click) {
+      this.items.click = () => {};
+    }
   }
 
   bindEvents() {
+    const { signal } = this.controller;
     // Bind click events
-    this.items.click(event => {
-      const newIndex = event.currentTarget.menuIndex;
+    for (const item of this.items) {
+      item.addEventListener(
+        'click',
+        evt => {
+          const newIndex = evt.currentTarget.menuIndex;
 
-      if (this.nonexclusive === true) {
-        $(event.currentTarget).toggleClass('active');
-      } else {
-        $(event.currentTarget)
-          .addClass('active')
-          .siblings()
-          .removeClass('active');
-      }
+          if (this.nonexclusive === true) {
+            evt.currentTarget.classList.toggle('active');
+          } else {
+            evt.currentTarget.classList.add('active');
+            for (const sib of evt.currentTarget.parentElement.children) {
+              if (sib !== evt.currentTarget) sib.classList.remove('active');
+            }
+          }
 
-      this.app.events.emit('menuClick', {
-        target: event.currentTarget,
-        index: newIndex,
-      });
-    });
+          this.app.events.emit('menuClick', {
+            target: evt.currentTarget,
+            index: newIndex,
+          });
+        },
+        { signal },
+      );
+    }
   }
 }
 
