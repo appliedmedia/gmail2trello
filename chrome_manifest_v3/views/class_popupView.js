@@ -44,10 +44,19 @@ class PopupView {
   get $toolBar() {
     return this.toolBar ? $(this.toolBar) : null;
   }
-  // Setter shim: GmailView (Lane 3) still writes this.app.popupView.$toolBar = jQueryObj.
-  // Unwrap to a native Element so our native fields stay consistent.
-  set $toolBar(jqVal) {
-    this.toolBar = jqVal && jqVal[0] ? jqVal[0] : null;
+  // Accepts either a native Element (Lane 3 GmailView) or a jQuery
+  // wrapper (legacy callers). Unwrap to native so this.toolBar is always
+  // a plain Element.
+  set $toolBar(val) {
+    if (!val) {
+      this.toolBar = null;
+    } else if (val.nodeType === 1) {
+      this.toolBar = val;
+    } else if (val[0]) {
+      this.toolBar = val[0];
+    } else {
+      this.toolBar = null;
+    }
   }
 
   constructor(args) {
@@ -654,10 +663,8 @@ class PopupView {
 
   handleDetectButton() {
     if (this.app.gmailView.preDetect()) {
-      // GmailView (Lane 3) still holds a jQuery $toolBar; unwrap to native Element.
-      const jqToolBar = this.app.gmailView.$toolBar;
-      this.toolBar = jqToolBar && jqToolBar[0] ? jqToolBar[0] : null;
-      this.finalCreatePopup(); // Moved from init() to here
+      this.toolBar = this.app.gmailView.$toolBar || null;
+      this.finalCreatePopup();
     }
   }
 
