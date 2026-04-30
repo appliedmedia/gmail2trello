@@ -32,6 +32,13 @@ class Gmail {
       this.handleGmailEvent(event);
     };
     document.addEventListener('g2t_gmail_event', this._gmailEventHandler);
+
+    // Request replay of cached bootstrap events from gmail_loader.js (MAIN
+    // world). If 'ready'/'load' fired before this listener registered they
+    // would otherwise be lost; the loader caches them and re-dispatches on
+    // this signal.
+    console.info('[g2t-gmail] listener registered, requesting replay');
+    document.dispatchEvent(new CustomEvent('g2t_gmail_request_replay'));
   }
 
   handleGmailEvent(event) {
