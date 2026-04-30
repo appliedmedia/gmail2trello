@@ -36,7 +36,9 @@ class Gmail {
     // Request replay of cached bootstrap events from gmail_loader.js (MAIN
     // world). If 'ready'/'load' fired before this listener registered they
     // would otherwise be lost; the loader caches them and re-dispatches on
-    // this signal.
+    // this signal. Caller (App.init) MUST run gmail.init() AFTER any view
+    // that listens for 'gmailReady'/'gmailLoaded', because the replay
+    // dispatch + emit chain is synchronous.
     console.info('[g2t-gmail] listener registered, requesting replay');
     document.dispatchEvent(new CustomEvent('g2t_gmail_request_replay'));
   }

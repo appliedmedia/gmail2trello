@@ -123,11 +123,17 @@ class App {
   init() {
     // this.utils.log('App:initialize');
     this.bindEvents();
-    this.gmail.init();
     this.model.init();
     this.gmailView.init();
     this.popupView.init();
     this.utils.init();
+    // gmail.init() must run AFTER gmailView/popupView have bound their
+    // 'gmailReady'/'gmailLoaded' listeners. gmail.init() synchronously
+    // requests a replay of the cached bootstrap events from
+    // gmail_loader.js (MAIN world); if the replay arrives before the
+    // view listeners are wired, the bootstrap signal is lost and the
+    // toolbar button is never injected.
+    this.gmail.init();
     this.persistLoad();
   }
 }
