@@ -154,12 +154,12 @@ Feature: GmailView Class
   Scenario: Should handle Gmail detection
     Given gmailView has a $toolBar
     When handleGmailDetected is called
-    Then app.popupView.$toolBar is set to gmailView.$toolBar
+    Then app.popupView.toolBar is set to gmailView.$toolBar
 
   Scenario: Should handle detect button
     Given preDetect returns true and toolBar is set
     When handleDetectButton is called
-    Then app.popupView.$toolBar is set to gmailView.$toolBar
+    Then app.popupView.toolBar is set to gmailView.$toolBar
     And app.popupView.finalCreatePopup was called once
 
   # --------------------------------------------------------------------------

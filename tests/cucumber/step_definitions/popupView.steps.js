@@ -33,7 +33,7 @@ Given('popup DOM structure with toolbar and button', function () {
     <div id="g2tPopup"></div>
     <div class="toolbar"></div>
   `;
-  this.instance.$toolBar = $('.toolbar');
+  this.instance.toolBar = sharedDocument.querySelector('.toolbar');
   this.instance.$g2tButton = $('#g2tButton');
   this.instance.$popup = $('#g2tPopup');
 });
@@ -175,12 +175,12 @@ Given('popup DOM with button and popup elements', function () {
       <div id="g2tPopup"></div>
     </div>
   `;
-  this.instance.$toolBar = $('.toolbar');
+  this.instance.toolBar = sharedDocument.querySelector('.toolbar');
   this.instance.html = { add_to_trello: '<div id="g2tButton"></div>' };
 });
 
 Given('the popupView has a toolbar reference', function () {
-  this.instance.$toolBar = $('.toolbar');
+  this.instance.toolBar = sharedDocument.querySelector('.toolbar');
 });
 
 When('handleForceRedraw is called on the popupView', function () {
@@ -201,7 +201,7 @@ Then('the popupView html add_to_trello is cleared', function () {
 });
 
 Then('the popupView toolBar is null', function () {
-  assert.strictEqual(this.instance.$toolBar, null);
+  assert.strictEqual(this.instance.toolBar, null);
 });
 
 // ---------------------------------------------------------------------------
@@ -224,7 +224,7 @@ Given('popup DOM with no button', function () {
   sharedDocument.body.innerHTML = `
     <div class="toolbar" gh="mtb"></div>
   `;
-  this.instance.$toolBar = null;
+  this.instance.toolBar = null;
   this.instance.html = {};
   // Track finalCreatePopup calls
   this._origFCP = this.instance.finalCreatePopup;
@@ -236,7 +236,7 @@ Given('popup DOM with no button', function () {
 
 Given('the popupView gmailView preDetect returns true with toolbar', function () {
   this.app.gmailView.preDetect = createMockFn(() => true);
-  this.app.gmailView.$toolBar = $('.toolbar');
+  this.app.gmailView.$toolBar = sharedDocument.querySelector('.toolbar');
   this.app.goog.storageSyncGet = createMockFn();
 });
 
@@ -247,7 +247,7 @@ Given('popup DOM with existing button in toolbar', function () {
       <div id="g2tButton" data-g2t-bound="1"></div>
     </div>
   `;
-  this.instance.$toolBar = $('.toolbar');
+  this.instance.toolBar = sharedDocument.querySelector('.toolbar');
   this._origFCP = this.instance.finalCreatePopup;
   this._fcpCalled = false;
   this.instance.finalCreatePopup = () => {
@@ -380,7 +380,7 @@ Given('popup DOM with full form selects', function () {
       </div>
     </div>
   `;
-  this.instance.$toolBar = $('.toolbar');
+  this.instance.toolBar = sharedDocument.querySelector('.toolbar');
   this.instance.$g2tButton = $('#g2tButton');
   this.instance.$popup = $('#g2tPopup');
   this.instance.$popupMessage = $('.popupMsg', this.instance.$popup);
@@ -532,7 +532,7 @@ Given('popup DOM with toolbar only', function () {
   sharedDocument.body.innerHTML = `
     <div class="toolbar"></div>
   `;
-  this.instance.$toolBar = $('.toolbar');
+  this.instance.toolBar = sharedDocument.querySelector('.toolbar');
   this.instance.html = {};
   // Stub loadFile to prevent actual fetch
   this.app.utils.loadFile = createMockFn(() => Promise.resolve());
@@ -575,7 +575,7 @@ Then('the toolbar contains exactly {int} g2tButton element', function (count) {
 When('handleForceRedraw is called then toolbar is re-set', function () {
   this.instance.handleForceRedraw();
   // Re-set toolbar after force redraw
-  this.instance.$toolBar = $('.toolbar');
+  this.instance.toolBar = sharedDocument.querySelector('.toolbar');
   // Clear existing button from DOM to simulate real scenario
   $('.toolbar').html('');
   this.instance.html['popup'] = '<div id="g2tPopup"><div class="popupMsg"></div><div class="content"></div></div>';

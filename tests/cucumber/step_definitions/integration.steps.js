@@ -841,7 +841,7 @@ When('popupLoaded fires making DOM ready', function () {
   );
 
   // Set toolbar reference so popup can initialize
-  this._realApp.popupView.$toolBar = $('body');
+  this._realApp.popupView.toolBar = sharedWindow.document.body;
 
   // Emit popupLoaded to trigger handlePopupLoaded
   this._realApp.events.emit('popupLoaded');

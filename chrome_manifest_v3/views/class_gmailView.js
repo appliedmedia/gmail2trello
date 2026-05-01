@@ -339,6 +339,7 @@ class GmailView {
   detectToolbar() {
     // was: $("[gh='mtb']", this.$root)
     let toolBar = this.root ? this.root.querySelector("[gh='mtb']") : null;
+    this.app.utils.log('GmailView:detectToolbar [gh=mtb]=' + (toolBar ? 'found' : 'null') + ' runaway=' + this.runaway);
 
     // was: while ($($toolBar).children().length === 1) { $toolBar = $($toolBar).children().first(); }
     while (toolBar && toolBar.children.length === 1) {
@@ -659,13 +660,13 @@ class GmailView {
   }
 
   handleGmailDetected() {
-    this.app.popupView.$toolBar = this.$toolBar;
+    this.app.popupView.toolBar = this.$toolBar;
     // this.app.popupView.init(); // Redundant - App.init() already calls this
   }
 
   handleDetectButton() {
     if (this.preDetect()) {
-      this.app.popupView.$toolBar = this.$toolBar;
+      this.app.popupView.toolBar = this.$toolBar;
       this.app.popupView.finalCreatePopup();
     }
   }

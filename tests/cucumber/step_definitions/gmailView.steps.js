@@ -283,8 +283,8 @@ Then('{string} listener was added', function (eventName) {
   assert.ok(found, `Expected addListener to be called with "${eventName}"`);
 });
 
-Then('app.popupView.$toolBar is set to gmailView.$toolBar', function () {
-  assert.strictEqual(this.app.popupView.$toolBar, this.instance.$toolBar);
+Then('app.popupView.toolBar is set to gmailView.$toolBar', function () {
+  assert.strictEqual(this.app.popupView.toolBar, this.instance.$toolBar);
 });
 
 Then('app.popupView.finalCreatePopup was called once', function () {

@@ -41,23 +41,6 @@ class PopupView {
   set $g2tButton(jqVal) {
     this.g2tButton = jqVal && jqVal[0] ? jqVal[0] : null;
   }
-  get $toolBar() {
-    return this.toolBar ? $(this.toolBar) : null;
-  }
-  // Accepts either a native Element (Lane 3 GmailView) or a jQuery
-  // wrapper (legacy callers). Unwrap to native so this.toolBar is always
-  // a plain Element.
-  set $toolBar(val) {
-    if (!val) {
-      this.toolBar = null;
-    } else if (val.nodeType === 1) {
-      this.toolBar = val;
-    } else if (val[0]) {
-      this.toolBar = val[0];
-    } else {
-      this.toolBar = null;
-    }
-  }
 
   constructor(args) {
     this.app = args.app;
@@ -662,8 +645,11 @@ class PopupView {
   }
 
   handleDetectButton() {
-    if (this.app.gmailView.preDetect()) {
+    const pre_k = this.app.gmailView.preDetect();
+    this.app.utils.log('PopupView:handleDetectButton preDetect=' + pre_k);
+    if (pre_k) {
       this.toolBar = this.app.gmailView.$toolBar || null;
+      this.app.utils.log('PopupView:handleDetectButton toolBar=' + (this.toolBar ? 'set' : 'null'));
       this.finalCreatePopup();
     }
   }
@@ -1157,6 +1143,7 @@ class PopupView {
   }
 
   handleGmailLoaded() {
+    this.app.utils.log('PopupView:handleGmailLoaded');
     this.handleDetectButton();
   }
 }
