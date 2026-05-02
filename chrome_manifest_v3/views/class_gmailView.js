@@ -76,7 +76,17 @@ class GmailView {
       this.app.utils.log('ERROR GmailView:detectToolbar RUNAWAY TRIGGERED');
       return;
     }
-    this.detectToolbar();
+    const found_k = this.detectToolbar();
+    if (found_k) {
+      // Original gmailLoaded event already drained with preDetect=false
+      // and bailed without setting popupView.toolBar. Now that the
+      // toolbar finally exists, re-kick the popup chain so the button
+      // gets injected.
+      this.app.utils.log(
+        'GmailView:detectToolbar_onTimeout found toolbar, emitting detectButton',
+      );
+      this.app.events.emit('detectButton');
+    }
   }
 
   // Callback methods for detectEmailOpeningMode
