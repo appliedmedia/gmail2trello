@@ -161,6 +161,10 @@ To create a distributable extension manually:
 
 MIT License - see [LICENSE.txt](<LICENSE.txt>) for details.
 
+## Provisioning
+
+If/when this product needs a GCP project (Gmail add-on conversion, Workspace Marketplace, Cloud APIs, OAuth consent), provisioning is scripted in [`appliedmedia/internal:iaas/scripts/gcp/`](https://github.com/appliedmedia/internal/tree/main/iaas/scripts/gcp). Per-product state lands at `iaas/state/gcp/gmail2trello.yaml`; GUI residual checklist at `iaas/manual/gcp/gmail2trello.md`. One `iaas-bot` service account serves every Applied Media product.
+
 ## Changelog
 
 See [docs/CHANGES.md](<docs/CHANGES.md>) for detailed version history.
