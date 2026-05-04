@@ -56,12 +56,12 @@
           });
 
           var forAttr = this.input.parent().attr('for-select');
-          // if (forAttr == "g2tBoard") {
-          //   $("#combo_g2tList").contents('.g2t-custom-combobox-input').focus();
-          // } else if (forAttr == "g2tList") {
-          //   $("#g2tPosition").focus()
-          // }
-          $('#' + forAttr).trigger('change');
+          // jQuery 4: $.trigger('change') does NOT fire native addEventListener handlers.
+          // popupView binds the cascade via native addEventListener, so dispatch a real Event.
+          var nativeEl = document.getElementById(forAttr);
+          if (nativeEl) {
+            nativeEl.dispatchEvent(new Event('change', { bubbles: true }));
+          }
         },
 
         autocompletechange: '_removeIfInvalid',
