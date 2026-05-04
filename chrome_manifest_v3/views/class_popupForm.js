@@ -1297,7 +1297,7 @@ class PopupForm {
     const popup = this.parent.$popup[0];
     const titleEl = popup.querySelector('#g2tTitle');
     if (titleEl) {
-      titleEl.value = data.subject;
+      titleEl.value = data.subject || '';
     }
 
     this.mime_html('attachment', false, data);

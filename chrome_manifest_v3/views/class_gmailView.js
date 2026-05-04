@@ -409,10 +409,31 @@ class GmailView {
     return result;
   }
 
+  _emptyGmailData() {
+    // Populated placeholder used when no email is visible. Keeps the form
+    // pipeline alive (boards still load) instead of bailing in maybeHydrateGmail
+    // / bindGmailData. Fields match the shape parseData produces on success.
+    return {
+      subject: '',
+      bodyAsRaw: '',
+      bodyAsMd: '',
+      linkAsRaw: '',
+      linkAsMd: '',
+      ccAsRaw: '',
+      ccAsMd: '',
+      attachment: [],
+      image: [],
+      emailId: 0,
+      time: '',
+      from: '',
+      fullName: '',
+    };
+  }
+
   parseData(args = {}) {
     // this.app.utils.log('parseData');
     if (this.parsingData) {
-      return;
+      return this._emptyGmailData();
     }
 
     let data = {};
@@ -427,7 +448,7 @@ class GmailView {
     //  }
     // this.app.utils.log('GmailView:parseData::viewport: ' + JSON.stringify(viewport));
     if (!viewport) {
-      return;
+      return this._emptyGmailData();
     }
 
     this.y0 = viewport.getBoundingClientRect().top + window.scrollY; // was: $viewport.offset().top
@@ -442,7 +463,7 @@ class GmailView {
     }
 
     if (!this.visibleMail) {
-      return;
+      return this._emptyGmailData();
     }
 
     // Grab first email that's visible that we can find:
@@ -456,7 +477,7 @@ class GmailView {
       this.app.utils.log(
         'GmailView:parseData::emailBody: ' + JSON.stringify(emailBody1_k),
       );
-      return;
+      return this._emptyGmailData();
     }
 
     this.parsingData = true;
