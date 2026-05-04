@@ -13,33 +13,15 @@ class PopupView {
     return PopupView.ck;
   }
 
-  // Backward-compat shims for cross-class callers still using $popup etc.
-  // These will be deleted in Lane 6. Setters unwrap jQuery objects so that
-  // test setup code (and GmailView lane-3) can still write $foo = $(...) and
-  // have the native field updated correctly.
+  // Backward-compat shim. $popup is kept because resetDragResize() calls
+  // .draggable() and .resizable() on it (jQuery-UI requires a jQuery wrapper).
+  // The other shims ($popupContent, $popupMessage, $g2tButton) were deleted
+  // in Wave 6 Lane 3 once popupForm migrated to read native fields.
   get $popup() {
     return this.popup ? $(this.popup) : null;
   }
   set $popup(jqVal) {
     this.popup = jqVal && jqVal[0] ? jqVal[0] : null;
-  }
-  get $popupContent() {
-    return this.popupContent ? $(this.popupContent) : null;
-  }
-  set $popupContent(jqVal) {
-    this.popupContent = jqVal && jqVal[0] ? jqVal[0] : null;
-  }
-  get $popupMessage() {
-    return this.popupMessage ? $(this.popupMessage) : null;
-  }
-  set $popupMessage(jqVal) {
-    this.popupMessage = jqVal && jqVal[0] ? jqVal[0] : null;
-  }
-  get $g2tButton() {
-    return this.g2tButton ? $(this.g2tButton) : null;
-  }
-  set $g2tButton(jqVal) {
-    this.g2tButton = jqVal && jqVal[0] ? jqVal[0] : null;
   }
 
   constructor(args) {
