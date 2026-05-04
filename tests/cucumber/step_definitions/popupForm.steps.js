@@ -19,9 +19,9 @@ Given('a PopupForm with mock parent', function () {
       cardName: '',
       cardDescription: '',
     },
-    $popup: $('<div id="g2tPopup"></div>'),
-    $popupMessage: $('<div id="g2tPopupMessage"></div>'),
-    $popupContent: $('<div id="g2tPopupContent"></div>'),
+    popup: $('<div id="g2tPopup"></div>')[0],
+    popupMessage: $('<div id="g2tPopupMessage"></div>')[0],
+    popupContent: $('<div id="g2tPopupContent"></div>')[0],
     size_k: {
       text: { min: 100 },
     },
@@ -262,9 +262,9 @@ Given('DOM with popup containing board and list selects', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   this.mockParent.updatesPending = [];
 });
 
@@ -356,9 +356,9 @@ Given('DOM with popup containing list and card selects', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   this.mockParent.updatesPending = [];
 });
 
@@ -455,9 +455,9 @@ Given('DOM with popup containing label container', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   // Ensure menuCtrl is available
   if (!this.mockParent.menuCtrl) {
     this.mockParent.menuCtrl = { reset: createMockFn() };
@@ -530,9 +530,9 @@ Given('DOM with popup containing members container', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   if (!this.mockParent.menuCtrl) {
     this.mockParent.menuCtrl = { reset: createMockFn() };
   }
@@ -634,9 +634,9 @@ Given('DOM with popup for hydration', function () {
       <div class="header"><a href="#">Link</a></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   this.mockParent.updatesPending = [];
   this.instance.parent = this.mockParent;
   // Stub model methods needed by bindGmailData
@@ -679,9 +679,9 @@ Given('DOM with popup for onDomReady', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   this.instance.parent = this.mockParent;
 });
 
@@ -747,9 +747,9 @@ Given('DOM with popup containing checkboxes', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   this.instance.parent = this.mockParent;
 });
 
@@ -788,9 +788,9 @@ Given('DOM with popup for submit complete', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   this.instance.parent = this.mockParent;
 });
 
@@ -815,9 +815,9 @@ Given('DOM with popup for API failure', function () {
       <div class="content"></div>
     </div>
   `;
-  this.mockParent.$popup = $('#g2tPopup');
-  this.mockParent.$popupMessage = $('.popupMsg', this.mockParent.$popup);
-  this.mockParent.$popupContent = $('.content', this.mockParent.$popup);
+  this.mockParent.popup = sharedDocument.querySelector('#g2tPopup');
+  this.mockParent.popupMessage = this.mockParent.popup.querySelector('.popupMsg');
+  this.mockParent.popupContent = this.mockParent.popup.querySelector('.content');
   this.instance.parent = this.mockParent;
   // Stub loadFile to avoid actual file loading
   this.app.utils.loadFile = createMockFn(() => Promise.resolve());

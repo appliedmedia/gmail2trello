@@ -34,8 +34,8 @@ Given('popup DOM structure with toolbar and button', function () {
     <div class="toolbar"></div>
   `;
   this.instance.toolBar = sharedDocument.querySelector('.toolbar');
-  this.instance.$g2tButton = $('#g2tButton');
-  this.instance.$popup = $('#g2tPopup');
+  this.instance.g2tButton = sharedDocument.querySelector('#g2tButton');
+  this.instance.popup = sharedDocument.querySelector('#g2tPopup');
 });
 
 Given('DOM with button and popup for centering', function () {
@@ -44,21 +44,24 @@ Given('DOM with button and popup for centering', function () {
     <div id="g2tButton" style="position: absolute; left: 100px; top: 50px; width: 50px; height: 30px;"></div>
     <div id="g2tPopup" style="position: absolute; width: 400px; height: 300px;"></div>
   `;
-  this.instance.$g2tButton = $('#g2tButton');
-  this.instance.$popup = $('#g2tPopup');
+  this.instance.g2tButton = sharedDocument.querySelector('#g2tButton');
+  this.instance.popup = sharedDocument.querySelector('#g2tPopup');
 });
 
 Given('mocked jQuery position methods on popupView', function () {
-  this.instance.$g2tButton.position = createMockFn(() => ({ left: 100, top: 50 }));
-  this.instance.$g2tButton.width = createMockFn(() => 50);
-  this.instance.$g2tButton.outerWidth = createMockFn(() => 50);
-  this.instance.$g2tButton.offsetParent = createMockFn(() => ({
+  // NOTE: production centerPopup() uses native offsetLeft/offsetWidth/offsetParent.
+  // These mocks are retained as harmless extra properties; production no longer
+  // calls .position()/.width()/.outerWidth()/.offsetParent() so they are unused.
+  this.instance.g2tButton.position = createMockFn(() => ({ left: 100, top: 50 }));
+  this.instance.g2tButton.width = createMockFn(() => 50);
+  this.instance.g2tButton.outerWidth = createMockFn(() => 50);
+  this.instance.g2tButton.offsetParent_jq = createMockFn(() => ({
     position: createMockFn(() => ({ left: 0, top: 0 })),
     width: createMockFn(() => 1024),
   }));
-  this.instance.$popup.position = createMockFn(() => ({ left: 200, top: 100 }));
-  this.instance.$popup.width = createMockFn(() => 400);
-  this.instance.$popup.css = createMockFn();
+  this.instance.popup.position = createMockFn(() => ({ left: 200, top: 100 }));
+  this.instance.popup.width = createMockFn(() => 400);
+  this.instance.popup.css = createMockFn();
 });
 
 // ---------------------------------------------------------------------------
@@ -381,21 +384,22 @@ Given('popup DOM with full form selects', function () {
     </div>
   `;
   this.instance.toolBar = sharedDocument.querySelector('.toolbar');
-  this.instance.$g2tButton = $('#g2tButton');
-  this.instance.$popup = $('#g2tPopup');
-  this.instance.$popupMessage = $('.popupMsg', this.instance.$popup);
-  this.instance.$popupContent = $('.content', this.instance.$popup);
+  this.instance.g2tButton = sharedDocument.querySelector('#g2tButton');
+  this.instance.popup = sharedDocument.querySelector('#g2tPopup');
+  this.instance.popupMessage = this.instance.popup.querySelector('.popupMsg');
+  this.instance.popupContent = this.instance.popup.querySelector('.content');
 
-  // Mock position methods for centerPopup
-  this.instance.$g2tButton.position = createMockFn(() => ({ left: 100, top: 50 }));
-  this.instance.$g2tButton.width = createMockFn(() => 50);
-  this.instance.$g2tButton.outerWidth = createMockFn(() => 50);
-  this.instance.$g2tButton.offsetParent = createMockFn(() => ({
+  // Mock position methods for centerPopup (kept as harmless extra props;
+  // production uses native offsetLeft/offsetWidth/offsetParent).
+  this.instance.g2tButton.position = createMockFn(() => ({ left: 100, top: 50 }));
+  this.instance.g2tButton.width = createMockFn(() => 50);
+  this.instance.g2tButton.outerWidth = createMockFn(() => 50);
+  this.instance.g2tButton.offsetParent_jq = createMockFn(() => ({
     position: createMockFn(() => ({ left: 0, top: 0 })),
     width: createMockFn(() => 1024),
   }));
-  this.instance.$popup.position = createMockFn(() => ({ left: 200, top: 100 }));
-  this.instance.$popup.width = createMockFn(() => 400);
+  this.instance.popup.position = createMockFn(() => ({ left: 200, top: 100 }));
+  this.instance.popup.width = createMockFn(() => 400);
 
   // Mock form methods
   this.instance.form.updateSubmitAvailable = createMockFn();
@@ -444,7 +448,7 @@ Then('persist listId equals {string}', function (expected) {
 });
 
 Given('the card select has an option with pos members labels', function () {
-  const $card = $('#g2tCard', this.instance.$popup);
+  const $card = $('#g2tCard', this.instance.popup);
   $card.html('');
   $card.append(
     $('<option>')
@@ -483,12 +487,12 @@ Given('popup DOM for show hide tests', function () {
     <div id="g2tButton"></div>
     <div id="g2tPopup" style="display:none;max-height:564px;"></div>
   `;
-  this.instance.$g2tButton = $('#g2tButton');
-  this.instance.$popup = $('#g2tPopup');
+  this.instance.g2tButton = sharedDocument.querySelector('#g2tButton');
+  this.instance.popup = sharedDocument.querySelector('#g2tPopup');
 });
 
 Given('the popup is currently visible', function () {
-  this.instance.$popup.show();
+  this.instance.popup.style.display = 'block';
 });
 
 When('showPopup is called on the popupView', function () {

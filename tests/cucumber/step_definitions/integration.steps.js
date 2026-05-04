@@ -294,10 +294,10 @@ When('model.trelloLoad is called on the real app', function () {
   $('body').append(
     '<div id="g2tPopup"><div class="popupMsg"></div><div class="content"></div><div id="g2tDesc"></div><div id="g2tTitle"></div><div id="g2tBoard"></div><div id="g2tList"></div><div id="g2tCard"></div><div id="g2tDue_Shortcuts"></div><div id="g2tAvatarImgOrText"></div><a id="g2tAvatarUrl"></a><a id="g2tUsername"></a><div id="g2tSignOutButton"></div><div id="report"></div><div id="g2t_attachment_container"></div><div id="g2t_attachment"></div><div id="g2t_image_container"></div><div id="g2t_image"></div></div>',
   );
-  this._realApp.popupView.$popup = $('#g2tPopup');
-  this._realApp.popupView.$g2tButton = $('#g2tButton');
-  this._realApp.popupView.$popupMessage = $('.popupMsg', this._realApp.popupView.$popup);
-  this._realApp.popupView.$popupContent = $('.content', this._realApp.popupView.$popup);
+  this._realApp.popupView.popup = sharedWindow.document.querySelector('#g2tPopup');
+  this._realApp.popupView.g2tButton = sharedWindow.document.querySelector('#g2tButton');
+  this._realApp.popupView.popupMessage = this._realApp.popupView.popup.querySelector('.popupMsg');
+  this._realApp.popupView.popupContent = this._realApp.popupView.popup.querySelector('.content');
 
   // Need init for event bindings
   this._realApp.init();
