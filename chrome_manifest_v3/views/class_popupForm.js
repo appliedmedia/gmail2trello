@@ -38,8 +38,8 @@ class PopupForm {
     if (this.domReady) {
       return;
     }
-    const $popup = this.parent?.$popup;
-    if (!$popup || !$popup.length) {
+    const popup = this.parent?.popup;
+    if (!popup) {
       return;
     }
 
@@ -67,11 +67,10 @@ class PopupForm {
     if (this.checkboxHandlersBound) {
       return;
     }
-    const $popup = this.parent?.$popup;
-    if (!$popup || !$popup.length) {
+    const popup = this.parent?.popup;
+    if (!popup) {
       return;
     }
-    const popup = this.parent.$popup[0];
 
     const bindToggle = (selector, key) => {
       const element = popup.querySelector(selector);
@@ -105,11 +104,10 @@ class PopupForm {
     if (this.accessibilityHandlersBound) {
       return;
     }
-    const $popup = this.parent?.$popup;
-    if (!$popup || !$popup.length) {
+    const popup = this.parent?.popup;
+    if (!popup) {
       return;
     }
-    const popup = this.parent.$popup[0];
 
     // Abort prior keyup handler, then re-bind
     if (this.controllers.keyupCheckbox) {
@@ -152,11 +150,10 @@ class PopupForm {
     if (!this.domReady) {
       return;
     }
-    const $popup = this.parent?.$popup;
-    if (!$popup || !$popup.length) {
+    const popup = this.parent?.popup;
+    if (!popup) {
       return;
     }
-    const popup = this.parent.$popup[0];
 
     const setChecked = (selector, value) => {
       if (value === undefined) {
@@ -191,8 +188,8 @@ class PopupForm {
     this.lastGmailData = gmailData;
     this.updateBoards();
 
-    if (this.parent.$popupContent) {
-      this.parent.$popupContent[0].style.display = '';
+    if (this.parent.popupContent) {
+      this.parent.popupContent.style.display = '';
     }
     this.hideMessage();
   }
@@ -233,7 +230,7 @@ class PopupForm {
     **/
 
   bindData(data) {
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
 
     for (const _a of document.querySelectorAll('.header a')) {
       document.addEventListener('keyup', evt => {
@@ -406,8 +403,8 @@ class PopupForm {
       });
     }
 
-    this.parent.$popupMessage[0].style.display = 'none';
-    this.parent.$popupContent[0].style.display = '';
+    this.parent.popupMessage.style.display = 'none';
+    this.parent.popupContent.style.display = '';
 
     // Setting up comboboxes after loading data.
     this.comboBox();
@@ -415,7 +412,7 @@ class PopupForm {
 
   updateBody(data = {}) {
     const attribute_storage_k = this.parent.ATTRIBUTE_STORAGE;
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
 
     const markdown_k =
       data?.markdown ?? popup.querySelector('#chkMarkdown').checked;
@@ -470,7 +467,7 @@ class PopupForm {
   }
 
   mime_array(tag) {
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const tag_formatted = `#${tag} input[type="checkbox"]`;
     const tags = popup.querySelectorAll(tag_formatted);
     const array = [];
@@ -495,7 +492,7 @@ class PopupForm {
   }
 
   reset() {
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     // Reset form to initial state
     const cardNameEl = popup.querySelector('#g2tCardName');
     if (cardNameEl) {
@@ -525,7 +522,7 @@ class PopupForm {
     if (!tag) {
       return '';
     }
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     return Array.from(popup.querySelectorAll(`#g2t_${tag} button.active`))
       .map(item => item.getAttribute(`trelloId-${tag}`))
       .join();
@@ -538,7 +535,7 @@ class PopupForm {
       this.app.persist.listId &&
       this.app.temp.title
     );
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const addToTrelloBtn = popup.querySelector('#addToTrello');
     if (addToTrelloBtn) {
       addToTrelloBtn.disabled = !isAvailable;
@@ -548,7 +545,7 @@ class PopupForm {
   // UI Updates
   updateBoards(tempId = 0) {
     const boards = this.app.temp.boards || [];
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const boardSelect = popup.querySelector('#g2tBoard');
 
     boardSelect.replaceChildren();
@@ -579,7 +576,7 @@ class PopupForm {
       return;
     }
 
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const boardId_k = popup.querySelector('#g2tBoard').value;
 
     const prev_item_k =
@@ -620,7 +617,7 @@ class PopupForm {
       return;
     }
 
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const listId_k = popup.querySelector('#g2tList').value;
 
     const prev_item_k =
@@ -662,7 +659,7 @@ class PopupForm {
 
   updateLabels() {
     const labels = this.app.temp.labels;
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const g2t = popup.querySelector('#g2t_label');
     g2t.replaceChildren();
 
@@ -741,7 +738,7 @@ class PopupForm {
 
   updateMembers() {
     const members = this.app.temp.members;
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const g2t = popup.querySelector('#g2tMembers');
     g2t.replaceChildren();
 
@@ -824,7 +821,7 @@ class PopupForm {
   }
 
   clearBoard() {
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const g2t = popup.querySelector('#g2tBoard');
     g2t.replaceChildren();
 
@@ -844,7 +841,7 @@ class PopupForm {
   }
 
   toggleCheckboxes(tag) {
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const tags = popup.querySelectorAll('#' + tag + ' input[type="checkbox"]');
     const tag1 = tags[0];
     const checked_k = tag1 ? tag1.checked : false;
@@ -856,7 +853,7 @@ class PopupForm {
   // Form Display
   showMessage(parent, text) {
     // Guard against calling before DOM elements are initialized
-    if (!this.parent.$popupMessage) {
+    if (!this.parent.popupMessage) {
       this.app.utils.log(
         'PopupForm:showMessage: DOM not ready, deferring message',
       );
@@ -865,7 +862,7 @@ class PopupForm {
       return;
     }
 
-    const popupMessage = this.parent.$popupMessage[0];
+    const popupMessage = this.parent.popupMessage;
     // text is plain string in all current call sites
     popupMessage.textContent = text;
 
@@ -938,23 +935,23 @@ class PopupForm {
 
   hideMessage() {
     // Guard against calling before DOM elements are initialized
-    if (!this.parent.$popupMessage || !this.parent.$popupContent) {
+    if (!this.parent.popupMessage || !this.parent.popupContent) {
       return;
     }
 
-    const popupContent = this.parent.$popupContent[0];
-    const popupMessage = this.parent.$popupMessage[0];
+    const popupContent = this.parent.popupContent;
+    const popupMessage = this.parent.popupMessage;
 
     if (popupContent.offsetParent === null) {
       // Rest of box is hidden so close it all:
-      this.parent.$popup[0].style.display = 'none'; // Parent is popup, so hide the whole thing
+      this.parent.popup.style.display = 'none'; // Parent is popup, so hide the whole thing
     } else {
       popupMessage.style.display = 'none';
     }
   }
 
   displaySubmitCompleteForm(params) {
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const form = popup.querySelector('#g2tForm');
 
     const success = document.createElement('div');
@@ -992,7 +989,7 @@ class PopupForm {
 
     // Load and display the comprehensive error template
     function displayAPIFailedForm_loadFile(html) {
-      const popup = this.parent.$popup[0];
+      const popup = this.parent.popup;
       let errorHtml = html;
       if (resp?.status == 400) {
         errorHtml +=
@@ -1000,12 +997,12 @@ class PopupForm {
       }
       // errorHtml comes from app.utils.loadFile (a static extension asset),
       // routed through g2tTrustedTypesPolicy once Lane 5 registers it.
-      this.parent.$popupContent[0].innerHTML = window.g2tTrustedTypesPolicy
+      this.parent.popupContent.innerHTML = window.g2tTrustedTypesPolicy
         ? window.g2tTrustedTypesPolicy.createHTML(errorHtml)
         : errorHtml;
       // Keep message area hidden when rendering full error content
-      if (this.parent.$popupMessage) {
-        this.parent.$popupMessage[0].style.display = 'none';
+      if (this.parent.popupMessage) {
+        this.parent.popupMessage.style.display = 'none';
       }
       // Bind reload handler after DOM injection
       if (resp?.status == 400) {
@@ -1045,16 +1042,21 @@ class PopupForm {
   // Form Components
   comboBox(update) {
     const jVals = { Board: '', Card: '', List: '' };
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const setJQueryVals = () => {
       Object.entries(jVals).forEach(([key]) => {
-        jVals[key] = $(`#g2t${key}`, this.parent.$popup);
+        const nativeEl_k = popup.querySelector(`#g2t${key}`);
+        jVals[key] = nativeEl_k ? $(nativeEl_k) : null;
       });
     };
     const set_max_autocomplete_size = () => {
       const max_k = window.innerHeight;
       const board_k = popup.querySelector('#g2tBoard');
-      const popup_offset_k = this.parent.$popup.offset();
+      const rect_k = popup.getBoundingClientRect();
+      const popup_offset_k = {
+        left: rect_k.left + window.scrollX,
+        top: rect_k.top + window.scrollY,
+      };
       const popup_top_k = popup_offset_k.top;
       const board_height_k = board_k ? board_k.offsetHeight : 0;
       const calc_k = max_k - popup_top_k - board_height_k - 90;
@@ -1087,7 +1089,7 @@ class PopupForm {
 
   mime_html(tag, isImage, data) {
     const self = this;
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const domTag_k = `#g2t_${tag.toLowerCase()}`;
     const domTag = popup.querySelector(domTag_k);
 
@@ -1181,8 +1183,8 @@ class PopupForm {
 
   // Form Actions
   submit() {
-    if (this.parent.$popupContent) {
-      this.parent.$popupContent[0].style.display = 'none';
+    if (this.parent.popupContent) {
+      this.parent.popupContent.style.display = 'none';
     }
     this.showMessage(this.parent, 'Submitting to Trello...');
     this.app.events.emit('submit');
@@ -1294,7 +1296,7 @@ class PopupForm {
     Object.assign(data, this.app.persist || {});
     this.updateBody(data);
 
-    const popup = this.parent.$popup[0];
+    const popup = this.parent.popup;
     const titleEl = popup.querySelector('#g2tTitle');
     if (titleEl) {
       titleEl.value = data.subject || '';
