@@ -1,5 +1,5 @@
 (() => {
-  $.widget('g2t_combobox', {
+  $.widget('g2t.g2t_combobox', {
     _create: function () {
       this.wrapper = $('<div>')
         .addClass('g2t-custom-combobox')
