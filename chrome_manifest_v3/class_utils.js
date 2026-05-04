@@ -494,12 +494,9 @@ class Utils {
       // jQuery wrapper with a real element at [0]
       nativeBody = emailBody[0];
     } else {
-      // Fallback: plain mock or legacy jQuery object; build a temporary container
+      // Fallback: plain mock with .innerHTML; build a temporary container
       const tmpDiv = document.createElement('div');
-      tmpDiv.innerHTML =
-        typeof emailBody.html === 'function'
-          ? emailBody.html()
-          : emailBody.innerHTML || '';
+      tmpDiv.innerHTML = emailBody.innerHTML || '';
       nativeBody = tmpDiv;
     }
 
