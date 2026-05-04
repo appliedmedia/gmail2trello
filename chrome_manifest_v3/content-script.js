@@ -43,9 +43,13 @@ function requestHandler(request, sender, sendResponse) {
   if (request?.message === 'g2t_initialize') {
     globalInit = true;
     // enough delay for gmail finishes rendering
-    jQuery(function () {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => app.init(), {
+        once: true,
+      });
+    } else {
       app.init();
-    });
+    }
     // Was:
     // setTimeout(function() {
     //     jQuery(document).ready(function() {
