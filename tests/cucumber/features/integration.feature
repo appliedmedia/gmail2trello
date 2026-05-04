@@ -133,7 +133,7 @@ Feature: Integration tests -- real G2T classes wired together
   Scenario: parseData handles missing email gracefully
     Given the DOM has no Gmail email structure
     When gmailView.parseData is called with fullName "Test User"
-    Then parseData returns undefined without crashing
+    Then parseData returns the empty placeholder without crashing
 
   # -------------------------------------------------------------------
   # Navigation and Redraw via gmail.js events

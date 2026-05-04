@@ -1046,7 +1046,7 @@ class PopupForm {
     const setJQueryVals = () => {
       Object.entries(jVals).forEach(([key]) => {
         const nativeEl_k = popup.querySelector(`#g2t${key}`);
-        jVals[key] = nativeEl_k ? $(nativeEl_k) : null;
+        jVals[key] = nativeEl_k ? $(nativeEl_k) : $();
       });
     };
     const set_max_autocomplete_size = () => {

@@ -548,7 +548,21 @@ Then('the parsed data ccAsRaw contains {string}', function (expected) {
   );
 });
 
-Then('the parsed data is undefined', function () {
-  assert.strictEqual(this._parsedData, undefined);
+Then('the parsed data is the empty placeholder', function () {
+  assert.ok(this._parsedData, 'parseData returned nothing');
+  assert.strictEqual(this._parsedData.subject, '');
+  assert.strictEqual(this._parsedData.bodyAsRaw, '');
+  assert.strictEqual(this._parsedData.from, '');
+  assert.strictEqual(this._parsedData.emailId, 0);
+  assert.ok(
+    Array.isArray(this._parsedData.attachment) &&
+      this._parsedData.attachment.length === 0,
+    'attachment should be empty array',
+  );
+  assert.ok(
+    Array.isArray(this._parsedData.image) &&
+      this._parsedData.image.length === 0,
+    'image should be empty array',
+  );
 });
 

@@ -1,3 +1,11 @@
+=== 3.2.0.003@2026-05-03 ===
+
+* Fix board-pick cascade. jQuery 4's `.trigger('change')` does not invoke native `addEventListener` handlers, so the popup view's native change listener never fired and the list/label/member dropdowns never populated. The combobox now dispatches a real `Event` on the underlying native `<select>` so both jQuery and native listeners run.
+* Fix the combobox widget never being registered. `$.widget('g2t_combobox', ...)` parsed as namespace `'g2t_combobox'` and widget name `undefined`, so `$.fn.g2t_combobox` was never installed. Pin the namespace to `'g2t.g2t_combobox'`.
+* Fix popup not hydrating when no email is selected. `parseData` now returns an empty placeholder object rather than `undefined`, so the form renders with blank subject/description instead of staying on "Loading...".
+* Wave 6 jQuery removal in app code. Replace the `this.parent.$popup[0]` double-wrap pattern across `class_popupForm.js` with the native fields already maintained by `PopupView` (38 sites). Drop the unused `$popupContent`, `$popupMessage`, `$g2tButton` shim getters from `PopupView`. Replace the lone `$()` context selector and `.offset()` call in the combobox setup with native equivalents. Replace the content-script's `jQuery(function () {...})` doc-ready shim with native `DOMContentLoaded`. Drop the dead `.html()` jQuery branch from `class_utils.js`'s emailBody coercion. The remaining jQuery surface is now only what jQuery-UI requires (`.draggable`, `.resizable`, `.tooltip`, `.g2t_combobox`).
+* Rename `zzikaron/` archive folder to `zzz_archives/`.
+
 === 3.2.0.002@2026-04-27 ===
 
 * Fix Trusted Types violation that prevented the popup from rendering on real Gmail (Chrome's `require-trusted-types-for 'script'` CSP blocked jQuery's internal `innerHTML` writes). Register a `g2t-gmail-html` policy in both content-script worlds and route jQuery's `htmlPrefilter` through it.

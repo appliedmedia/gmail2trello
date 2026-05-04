@@ -281,10 +281,10 @@ Feature: GmailView Class
     Then the parsed data ccAsRaw contains "Bob Jones"
     And the parsed data ccAsRaw contains "bob@example.com"
 
-  Scenario: parseData returns empty values when no email is open
+  Scenario: parseData returns empty placeholder when no email is open
     Given the DOM contains no Gmail email
     When parseData is called on the gmailView
-    Then the parsed data is undefined
+    Then the parsed data is the empty placeholder
 
   Scenario: parseData handles email with no attachments
     Given the DOM contains a Gmail email with no attachments

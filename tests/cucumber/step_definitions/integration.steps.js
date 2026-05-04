@@ -709,8 +709,22 @@ Given('the DOM has no Gmail email structure', function () {
   this._realApp.gmailView.root = sharedWindow.document.body; // field renamed $root -> root
 });
 
-Then('parseData returns undefined without crashing', function () {
-  assert.strictEqual(this._parseResult, undefined);
+Then('parseData returns the empty placeholder without crashing', function () {
+  assert.ok(this._parseResult, 'parseData returned nothing');
+  assert.strictEqual(this._parseResult.subject, '');
+  assert.strictEqual(this._parseResult.bodyAsRaw, '');
+  assert.strictEqual(this._parseResult.from, '');
+  assert.strictEqual(this._parseResult.emailId, 0);
+  assert.ok(
+    Array.isArray(this._parseResult.attachment) &&
+      this._parseResult.attachment.length === 0,
+    'attachment should be empty array',
+  );
+  assert.ok(
+    Array.isArray(this._parseResult.image) &&
+      this._parseResult.image.length === 0,
+    'image should be empty array',
+  );
 });
 
 // -------------------------------------------------------------------------
