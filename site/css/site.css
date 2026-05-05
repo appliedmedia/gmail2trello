@@ -110,16 +110,16 @@
 }
 
 /* ============================================
-   Keep in Touch Form
+   Stay in Touch Form
    ============================================ */
-.keepintouch-form {
+.stayintouch-form {
   display: flex;
   gap: var(--space-md);
   max-width: 600px;
   margin: 0 auto;
 }
 
-.keepintouch-form input[type="email"] {
+.stayintouch-form input[type="email"] {
   min-width: 320px;
   flex: 1;
   padding: var(--space-lg) var(--space-xl);
@@ -131,18 +131,18 @@
   color: var(--color-text);
 }
 
-.keepintouch-form input[type="email"]::placeholder {
+.stayintouch-form input[type="email"]::placeholder {
   color: var(--color-text-muted);
 }
 
-.keepintouch-form input[type="email"]:focus {
+.stayintouch-form input[type="email"]:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-color: var(--color-primary);
 }
 
 @media (max-width: 480px) {
-  .keepintouch-form {
+  .stayintouch-form {
     flex-direction: column;
   }
 }

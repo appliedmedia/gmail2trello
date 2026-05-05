@@ -1,0 +1,44 @@
+# License: Code Transparency v1
+
+Copyright © 2025...2026-01-11.001:a@cov.in and Applied Media. All Rights Reserved.
+
+## Scope
+
+1. All files (e.g. code, scripts, configs, docs) in this repository ("Code", "Repo").
+2. Requests/defects reported as Issues in GitHub ("Feedback").
+3. Items 1-2 together ("Software").
+
+## TL;DR
+
+You can post requests/defects, view, audit, and submit pull requests. You cannot use or sell derivatives.
+
+## Permissions
+
+1. **View and Audit**: View, study, and audit the Code.
+2. **Contribute**: Requests/defects via Feedback, submit Pull Requests at Repo.
+
+## Non-Maintainer Restrictions
+
+1. **No Derivative Works**: No derivative works, modified versions, or competing products providing similar functionality.
+2. **No Redistribution**: No distribution, publication, or sale of the Software under the same or different names or channels.
+3. **No Commercial Use**: Commercial use requires a separate license.
+
+## Contributions
+
+By submitting a request/defect or pull request, you agree:
+
+1. You grant maintainers a perpetual, worldwide, non-exclusive, royalty-free, irrevocable license to use, modify, distribute, and relicense your contribution.
+2. You have the right to grant this license and your contribution violates no third-party rights.
+3. You receive no redistribution or relicensing rights.
+
+## Disclaimer
+
+Except as required by applicable law, Software is provided "as-is" without warranty of any kind (express, implied, merchantability, fitness, noninfringement) and maintainers shall not be liable for any claim, damages, or other liability arising from use of or dealings with Software or maintainers.
+
+## Termination
+
+Rights terminate automatically upon violation. You must then cease use and destroy all copies of Software.
+
+## Contact
+
+Post requests/defects as GitHub Issues in Repo. Other questions, such as commercial licensing, contact maintainers.
