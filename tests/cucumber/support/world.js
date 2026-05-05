@@ -99,6 +99,10 @@ function createChromeMock() {
     runtime: {
       sendMessage: createMockFn(),
       getURL: createMockFn((p) => `chrome-extension://test-id/${p}`),
+      onMessage: {
+        addListener: createMockFn(),
+        removeListener: createMockFn(),
+      },
     },
   };
 }
@@ -173,6 +177,7 @@ function createApp() {
     goog: {
       init: createMockFn(),
       runtimeSendMessage: createMockFn(),
+      runtimeOnMessageAddListener: createMockFn(),
       storageSyncGet: createMockFn(),
       storageSyncSet: createMockFn(),
       runtimeGetURL: createMockFn((p) => `chrome-extension://test-id/${p}`),

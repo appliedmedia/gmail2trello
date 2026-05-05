@@ -182,10 +182,12 @@ Then(
       'trelloUserAndBoardsReady listener missing',
     );
 
-    // PopupView registers these
+    // PopupView registers these (popupLoaded was removed in 3.2.0.004 when
+    // the popup moved to a lazy create/destroy lifecycle; gmailLoaded is
+    // the closest still-present PopupView event)
     assert.ok(
-      listeners['popupLoaded']?.length > 0,
-      'popupLoaded listener missing',
+      listeners['gmailLoaded']?.length > 0,
+      'gmailLoaded listener missing',
     );
 
     // PopupForm registers these
@@ -857,8 +859,11 @@ When('popupLoaded fires making DOM ready', function () {
   // Set toolbar reference so popup can initialize
   this._realApp.popupView.toolBar = sharedWindow.document.body;
 
-  // Emit popupLoaded to trigger handlePopupLoaded
-  this._realApp.events.emit('popupLoaded');
+  // Pre-Wave 6 this emitted 'popupLoaded' to drive handlePopupLoaded.
+  // Under the lazy create/destroy lifecycle, handlePopupLoaded is called
+  // directly by mountPopup. The DOM has already been seeded above, so we
+  // invoke handlePopupLoaded straight against the prepared markup.
+  this._realApp.popupView.handlePopupLoaded();
 });
 
 Then('popupForm.domReady is true', function () {

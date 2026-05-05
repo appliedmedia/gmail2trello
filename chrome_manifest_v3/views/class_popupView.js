@@ -81,6 +81,9 @@ class PopupView {
     // AbortControllers for document-level and element-level event listeners
     this.controllers = {};
 
+    // One-shot guard so chrome.runtime.onMessage is only added once per app start
+    this.runtimeMessageBound = false;
+
     // Initialize form instance
     this.form = new G2T.PopupForm({
       parent: this,
@@ -104,14 +107,78 @@ class PopupView {
     nodes.forEach(node => parent.appendChild(node));
   }
 
+  // Bind button-only event handlers. Safe to call repeatedly; _resetController
+  // aborts the prior handler before adding a new one. Called from
+  // finalCreatePopup whenever the button is (re)injected, and from
+  // validateButtonState Check 3 when the bound marker is missing.
+  bindButtonEvents() {
+    this.g2tButton = document.querySelector('#g2tButton');
+    if (!this.g2tButton) {
+      return false;
+    }
+
+    const btnMdCtrl = this._resetController('g2tButtonMousedown');
+    this.g2tButton.addEventListener(
+      'mousedown',
+      event => {
+        if (this.app.utils.modKey(event)) {
+          // TODO (Ace, 28-Mar-2017): Figure out how to reset layout here!
+        } else {
+          if (this.popupVisible()) {
+            this.hidePopup();
+          } else {
+            this.showPopup();
+          }
+        }
+      },
+      { signal: btnMdCtrl.signal },
+    );
+
+    const btnMeCtrl = this._resetController('g2tButtonMouseenter');
+    this.g2tButton.addEventListener(
+      'mouseenter',
+      function (evt) {
+        evt.currentTarget.classList.add('T-I-JW');
+      },
+      { signal: btnMeCtrl.signal },
+    );
+
+    const btnMlCtrl = this._resetController('g2tButtonMouseleave');
+    this.g2tButton.addEventListener(
+      'mouseleave',
+      function (evt) {
+        evt.currentTarget.classList.remove('T-I-JW');
+      },
+      { signal: btnMlCtrl.signal },
+    );
+
+    this.g2tButton.setAttribute('data-g2t-bound', '1');
+    return true;
+  }
+
+  // Mount the popup HTML onto document.body and run the DOM-binding pass.
+  // Returns false if the popup HTML template is not yet cached; the caller
+  // should retry once finalCreatePopup's loadFile callback completes.
+  mountPopup() {
+    if (!this.html['popup'] || this.html['popup'].length === 0) {
+      this.app.utils.log(
+        'PopupView:mountPopup: popup HTML not cached, deferring',
+      );
+      return false;
+    }
+    // Strip any orphan popup before mounting fresh
+    document.querySelectorAll('#g2tPopup').forEach(p => p.remove());
+    this._appendHtml(document.body, this.html['popup']);
+    this.handlePopupLoaded();
+    return true;
+  }
+
   finalCreatePopup() {
     if (!this.toolBar) {
       return; // button not available yet
     }
 
-    let needInit = false;
     const button = document.querySelector('#g2tButton');
-    const popup = document.querySelector('#g2tPopup');
 
     if (!button) {
       if (
@@ -152,52 +219,37 @@ class PopupView {
       }
       this.app.utils.log('PopupView:confirmPopup: creating button');
       this._appendHtml(this.toolBar, this.html['add_to_trello']);
-      needInit = true;
+      this.bindButtonEvents();
     } else if (button.offsetParent !== null) {
       this.app.utils.log('PopupView:confirmPopup: button visible');
+      if (!button.hasAttribute('data-g2t-bound')) {
+        this.bindButtonEvents();
+      }
     } else {
       this.app.utils.log(
         'PopupView:confirmPopup: Button is in an inactive region. Moving...',
       );
-      //relocate
-      const allButtons = document.querySelectorAll('#g2tButton');
-      if (allButtons.length > 1) {
-        allButtons.forEach(b => b.remove()); // In case multiple copies were created
-        const allPopups = document.querySelectorAll('#g2tPopup');
-        if (allPopups.length > 1) {
-          allPopups.forEach(p => p.remove()); // In case copies were created
-        }
-      }
-      this.app.utils.log('PopupView:confirmPopup: adding Button and Popup');
-      const singleButton = document.querySelector('#g2tButton');
-      const singlePopup = document.querySelector('#g2tPopup');
-      if (singleButton) this.toolBar.appendChild(singleButton);
-      if (singlePopup) this.toolBar.appendChild(singlePopup);
+      // Strip every existing button copy and any stray popup. The popup
+      // is mounted lazily on next showPopup, so nothing of value is lost.
+      document.querySelectorAll('#g2tButton').forEach(b => b.remove());
+      document.querySelectorAll('#g2tPopup').forEach(p => p.remove());
+      this.app.utils.log(
+        'PopupView:confirmPopup: re-creating button in active toolbar',
+      );
+      this._appendHtml(this.toolBar, this.html['add_to_trello']);
+      this.bindButtonEvents();
     }
 
-    if (needInit || !popup) {
-      if (this.html && this.html['popup'] && this.html['popup'].length > 0) {
-        this.app.utils.log('PopupView:confirmPopup: adding popup');
-        this._appendHtml(this.toolBar, this.html['popup']);
-        // Emit popupLoaded event
-        this.app.events.emit('popupLoaded');
-        needInit = true;
-      } else {
-        needInit = false;
-        function confirmPopup_loadFile(html) {
-          this.html['popup'] = html;
-          this.app.utils.log('PopupView:confirmPopup: creating popup');
-          this._appendHtml(this.toolBar, html);
-          this.app.events.emit('popupLoaded');
-        }
-        const path = 'views/popupView.html';
-        const callback = confirmPopup_loadFile.bind(this);
-        this.app.utils.loadFile({ path, callback });
+    // Pre-cache popup HTML so the first open is fast. The popup itself is
+    // not appended here; lazy mount handles that on showPopup().
+    if (!this.html['popup']) {
+      function cachePopupHtml(html) {
+        this.html['popup'] = html;
+        this.app.utils.log('PopupView:confirmPopup: popup HTML cached');
       }
-    }
-
-    if (needInit) {
-      // State is loaded centrally by app
+      const path = 'views/popupView.html';
+      const callback = cachePopupHtml.bind(this);
+      this.app.utils.loadFile({ path, callback });
     }
   }
 
@@ -206,23 +258,26 @@ class PopupView {
    * "Add card" button to the edge of the window and then center that under the "Add card" button:
    */
   centerPopup(useWidth) {
-    // Use native offsetLeft/offsetWidth/offsetParent in place of jQuery .position()/.width()/.offsetParent()
-    const g2tLeft = this.g2tButton.offsetLeft;
-    const g2tRight = g2tLeft + this.g2tButton.offsetWidth;
-    let g2tCenter = g2tLeft + this.g2tButton.offsetWidth / 2;
+    // Popup is mounted on document.body (position: absolute), button is
+    // inside the Gmail toolbar. Compute viewport-relative coordinates via
+    // getBoundingClientRect, then offset by page scroll for body anchoring.
+    const btnRect = this.g2tButton.getBoundingClientRect();
+    const g2tLeft = btnRect.left + window.scrollX;
+    const g2tRight = btnRect.right + window.scrollX;
+    let g2tCenter = g2tLeft + btnRect.width / 2;
 
-    const parentEl = this.g2tButton.offsetParent || document.body;
-    const parentRight = parentEl.offsetLeft + parentEl.offsetWidth;
+    const viewportRight = window.innerWidth + window.scrollX;
 
     const length_from_left_k = g2tLeft * 1.5;
-    const length_from_right_k = (parentRight - g2tRight) * 1.5;
+    const length_from_right_k = (viewportRight - g2tRight) * 1.5;
     const calcWidth_k = Math.min(length_from_left_k, length_from_right_k); // If we need a width to use
 
     // We'll make our popup 1.25x as wide as the button to the end of the window up to max width:
     let newPopupWidth = this.size_k.width.min;
     if (useWidth && useWidth > 0) {
       newPopupWidth = useWidth; // May snap to min if necessary
-      g2tCenter = this.popup.offsetLeft + this.popup.offsetWidth / 2;
+      const popupRect = this.popup.getBoundingClientRect();
+      g2tCenter = popupRect.left + window.scrollX + popupRect.width / 2;
     } else if (this.app.persist.popupWidth > 0) {
       newPopupWidth = this.app.persist.popupWidth;
     } else {
@@ -242,15 +297,15 @@ class PopupView {
       newPopupLeft = g2tCenter - newPopupWidth / 2;
     }
 
+    // 4px gap below the button so the popup hangs cleanly off the toolbar
+    const newPopupTop = btnRect.bottom + window.scrollY + 4;
+
     this.popup.style.width = newPopupWidth + 'px';
     this.popup.style.left = newPopupLeft + 'px';
+    this.popup.style.top = newPopupTop + 'px';
 
     // Store initial popup width
     this.app.persist.popupWidth = newPopupWidth;
-
-    // this.onResize();
-
-    // set posDirty to true here if we needed to re-center popup after resizing
   }
 
   resetDragResize() {
@@ -280,12 +335,6 @@ class PopupView {
   }
 
   bindEvents() {
-    // Only bind the popupLoaded event here - everything else waits for DOM
-    this.app.events.addListener(
-      'popupLoaded',
-      this.handlePopupLoaded.bind(this),
-    );
-
     // Bind internal PopupView events
     this.app.events.addListener(
       'onPopupVisible',
@@ -316,10 +365,17 @@ class PopupView {
   }
 
   bindPopupEvents() {
-    // Bind chrome.runtime.onMessage for popup-specific messages
+    // Bind chrome.runtime.onMessage for popup-specific messages.
+    // One-shot guarded because handlePopupLoaded runs on every lazy mount,
+    // and the runtime message listener should only be added once per
+    // app lifetime to avoid the keyboard shortcut firing N times.
+    if (this.runtimeMessageBound) {
+      return;
+    }
     this.app.goog.runtimeOnMessageAddListener(
       this.handleRuntimeMessage.bind(this),
     );
+    this.runtimeMessageBound = true;
   }
 
   handlePersistLoaded() {
@@ -329,106 +385,121 @@ class PopupView {
   }
 
   showPopup() {
-    if (this.g2tButton && this.popup) {
-      // keydown handler
-      const kdCtrl = this._resetController('keydown');
-      document.addEventListener(
-        'keydown',
-        event => {
-          const visible_k = this.popupVisible();
-          const periodASCII_k = 46;
-          const periodNumPad_k = 110;
-          const periodKeyCode_k = 190;
-          const isEscape_k = event.key === 'Escape';
-          const isEnter_k = event.key === 'Enter';
-          const isPeriodASCII_k = event.which === periodASCII_k;
-          const isPeriodNumPad_k = event.which === periodNumPad_k;
-          const isPeriodKeyCode_k = event.which === periodKeyCode_k;
-          const isPeriod_k =
-            isPeriodASCII_k || isPeriodNumPad_k || isPeriodKeyCode_k;
-          const isCtrlCmd_k = event.ctrlKey || event.metaKey;
-          const isCtrlCmdPeriod_k = isCtrlCmd_k && isPeriod_k;
-          const isCtrlCmdEnter_k = isCtrlCmd_k && isEnter_k;
+    // Re-resolve the button if our cached ref is stale (Gmail re-renders
+    // the toolbar across view changes).
+    if (!this.g2tButton || !document.body.contains(this.g2tButton)) {
+      this.g2tButton = document.querySelector('#g2tButton');
+    }
+    if (!this.g2tButton) {
+      this.app.utils.log('PopupView:showPopup: no button, ignoring');
+      return;
+    }
 
-          if (visible_k) {
-            if (isEscape_k || isCtrlCmdPeriod_k) {
-              this.hidePopup();
-            } else if (isCtrlCmdEnter_k) {
-              this.form.submit();
-            }
+    // Lazy mount: build the popup on demand if it is not currently in the
+    // DOM. Returns false if the popup HTML template has not finished
+    // loading yet; first-open after a fresh page load may need a beat.
+    if (!this.popup || !document.body.contains(this.popup)) {
+      if (!this.mountPopup()) {
+        return;
+      }
+    }
+
+    // keydown handler
+    const kdCtrl = this._resetController('keydown');
+    document.addEventListener(
+      'keydown',
+      event => {
+        const visible_k = this.popupVisible();
+        const periodASCII_k = 46;
+        const periodNumPad_k = 110;
+        const periodKeyCode_k = 190;
+        const isEscape_k = event.key === 'Escape';
+        const isEnter_k = event.key === 'Enter';
+        const isPeriodASCII_k = event.which === periodASCII_k;
+        const isPeriodNumPad_k = event.which === periodNumPad_k;
+        const isPeriodKeyCode_k = event.which === periodKeyCode_k;
+        const isPeriod_k =
+          isPeriodASCII_k || isPeriodNumPad_k || isPeriodKeyCode_k;
+        const isCtrlCmd_k = event.ctrlKey || event.metaKey;
+        const isCtrlCmdPeriod_k = isCtrlCmd_k && isPeriod_k;
+        const isCtrlCmdEnter_k = isCtrlCmd_k && isEnter_k;
+
+        if (visible_k) {
+          if (isEscape_k || isCtrlCmdPeriod_k) {
+            this.hidePopup();
+          } else if (isCtrlCmdEnter_k) {
+            this.form.submit();
           }
-        },
-        { signal: kdCtrl.signal },
-      );
+        }
+      },
+      { signal: kdCtrl.signal },
+    );
 
-      /* Temporarily disabled to test link clicks
-      const muCtrl = this._resetController('mouseup');
-      document.addEventListener('mouseup', event => {
-        // Click isn't always propagated on Mailbox bar, so using mouseup instead.
+    /* Temporarily disabled to test link clicks
+    const muCtrl = this._resetController('mouseup');
+    document.addEventListener('mouseup', event => {
+      // Click isn't always propagated on Mailbox bar, so using mouseup instead.
+      if (
+        !event.target.closest('#g2tButton') &&
+        !event.target.closest('#g2tPopup') &&
+        g2t_has(this.mouseDownTracker, event.target) &&
+        this.mouseDownTracker[event.target] === 1 &&
+        !event.target.closest('.ui-autocomplete')
+      ) {
+        this.mouseDownTracker[event.target] = 0;
+        // Add small delay to allow link clicks to process first
+        setTimeout(() => {
+          this.hidePopup();
+        }, 10);
+      }
+      // Clear mouseDownTracker for any click
+      if (g2t_has(this.mouseDownTracker, event.target)) {
+        this.mouseDownTracker[event.target] = 0;
+      }
+    }, { signal: muCtrl.signal });
+    */
+
+    // mousedown handler
+    const mdCtrl = this._resetController('mousedown');
+    document.addEventListener(
+      'mousedown',
+      event => {
+        // Click isn't always propagated on Mailbox bar, so using mouseup instead
+        if (
+          !event.target.closest('#g2tButton') &&
+          !event.target.closest('#g2tPopup')
+        ) {
+          this.mouseDownTracker[event.target] = 1;
+        }
+      },
+      { signal: mdCtrl.signal },
+    );
+
+    // focusin handler
+    const fiCtrl = this._resetController('focusin');
+    document.addEventListener(
+      'focusin',
+      event => {
+        // Only hide popup if focus is outside both the button and popup
+        // AND the target is not inside the popup (additional safety check)
         if (
           !event.target.closest('#g2tButton') &&
           !event.target.closest('#g2tPopup') &&
-          g2t_has(this.mouseDownTracker, event.target) &&
-          this.mouseDownTracker[event.target] === 1 &&
-          !event.target.closest('.ui-autocomplete')
+          !event.target.matches('#g2tPopup, #g2tPopup *')
         ) {
-          this.mouseDownTracker[event.target] = 0;
-          // Add small delay to allow link clicks to process first
-          setTimeout(() => {
-            this.hidePopup();
-          }, 10);
+          this.hidePopup();
         }
-        // Clear mouseDownTracker for any click
-        if (g2t_has(this.mouseDownTracker, event.target)) {
-          this.mouseDownTracker[event.target] = 0;
-        }
-      }, { signal: muCtrl.signal });
-      */
+      },
+      { signal: fiCtrl.signal },
+    );
 
-      // mousedown handler
-      const mdCtrl = this._resetController('mousedown');
-      document.addEventListener(
-        'mousedown',
-        event => {
-          // Click isn't always propagated on Mailbox bar, so using mouseup instead
-          if (
-            !event.target.closest('#g2tButton') &&
-            !event.target.closest('#g2tPopup')
-          ) {
-            this.mouseDownTracker[event.target] = 1;
-          }
-        },
-        { signal: mdCtrl.signal },
-      );
+    // resetting the max height on load.
+    this.popup.style.maxHeight = '564px';
+    this.mouseDownTracker = {};
 
-      // focusin handler
-      const fiCtrl = this._resetController('focusin');
-      document.addEventListener(
-        'focusin',
-        event => {
-          // Only hide popup if focus is outside both the button and popup
-          // AND the target is not inside the popup (additional safety check)
-          if (
-            !event.target.closest('#g2tButton') &&
-            !event.target.closest('#g2tPopup') &&
-            !event.target.matches('#g2tPopup, #g2tPopup *')
-          ) {
-            this.hidePopup();
-          }
-        },
-        { signal: fiCtrl.signal },
-      );
+    this.popup.style.display = 'block';
 
-      //  this.centerPopup(); // Did this here if posDirty was true
-
-      // resetting the max height on load.
-      document.querySelector('#g2tPopup').style.maxHeight = '564px';
-      this.mouseDownTracker = {};
-
-      this.popup.style.display = 'block';
-
-      this.app.events.emit('onPopupVisible');
-    }
+    this.app.events.emit('onPopupVisible');
   }
 
   toggleActiveMouseDown(elm) {
@@ -441,29 +512,89 @@ class PopupView {
   }
 
   hidePopup() {
-    if (this.g2tButton && this.popup) {
-      // Abort all document-level controllers
-      ['keydown', 'mouseup', 'mousedown', 'focusin'].forEach(name => {
-        if (this.controllers[name]) {
-          this.controllers[name].abort();
-          this.controllers[name] = null;
+    if (!this.popup) {
+      return;
+    }
+
+    // Document-level listeners attached in showPopup
+    ['keydown', 'mouseup', 'mousedown', 'focusin'].forEach(name => {
+      if (this.controllers[name]) {
+        this.controllers[name].abort();
+        this.controllers[name] = null;
+      }
+    });
+
+    // Popup-internal listeners attached in handlePopupLoaded.
+    // Button-only listeners (g2tButtonMousedown / Mouseenter / Mouseleave)
+    // are intentionally NOT in this list; they belong to the toolbar
+    // button, which outlives the popup.
+    [
+      'closeBtn',
+      'submit',
+      'signOut',
+      'authorize',
+      'addToTrello',
+      'boardChange',
+      'listChange',
+      'cardChange',
+      'positionChange',
+      'positionKeyup',
+      'dueShortcuts',
+      'positionTemp',
+      'dueDate',
+      'dueTime',
+      'title',
+      'desc',
+      'tag_attachment',
+      'tag_image',
+      'reload',
+    ].forEach(name => {
+      if (this.controllers[name]) {
+        this.controllers[name].abort();
+        this.controllers[name] = null;
+      }
+    });
+
+    // PopupForm-side controllers (checkbox + accessibility keyup)
+    if (this.form?.controllers) {
+      Object.keys(this.form.controllers).forEach(name => {
+        if (this.form.controllers[name]) {
+          this.form.controllers[name].abort();
+          this.form.controllers[name] = null;
         }
       });
-      this.popup.style.display = 'none';
+    }
+
+    // Tear down the popup element entirely. Mounting inside Gmail's
+    // toolbar previously caused Gmail's mutation observer to remove the
+    // toolbar button as collateral damage when display flipped.
+    this.popup.remove();
+    this.popup = null;
+    this.popupMessage = null;
+    this.popupContent = null;
+
+    // Reset binding flags so the next mount re-runs first-time setup.
+    // PopupForm.persistReady and PopupForm.lastGmailData are deliberately
+    // preserved; they are the "last saved state" that lets a re-opened
+    // popup come back populated.
+    this.isInitialized = false;
+    this.comboInitialized = false;
+    if (this.form) {
+      this.form.domReady = false;
+      this.form.checkboxHandlersBound = false;
+      this.form.accessibilityHandlersBound = false;
+      this.form.dataBound = false;
     }
   }
 
   popupVisible() {
-    let visible = false;
-    if (
-      this.g2tButton &&
-      this.popup &&
-      getComputedStyle(this.popup).display === 'block'
-    ) {
-      visible = true;
+    if (!this.popup || !document.body.contains(this.popup)) {
+      return false;
     }
-
-    return visible;
+    if (!this.g2tButton) {
+      return false;
+    }
+    return getComputedStyle(this.popup).display === 'block';
   }
 
   getManifestVersion() {
@@ -532,10 +663,7 @@ class PopupView {
       this.app.utils.log(
         'periodicChecks: Button missing event binding marker. Re-binding...',
       );
-      // Re-bind events by calling handlePopupLoaded
-      if (this.isInitialized) {
-        this.handlePopupLoaded();
-      }
+      this.bindButtonEvents();
       return;
     }
 
@@ -631,7 +759,10 @@ class PopupView {
     this.app.utils.log('PopupView:handleDetectButton preDetect=' + pre_k);
     if (pre_k) {
       this.toolBar = this.app.gmailView.$toolBar || null;
-      this.app.utils.log('PopupView:handleDetectButton toolBar=' + (this.toolBar ? 'set' : 'null'));
+      this.app.utils.log(
+        'PopupView:handleDetectButton toolBar=' +
+          (this.toolBar ? 'set' : 'null'),
+      );
       this.finalCreatePopup();
     }
   }
@@ -683,11 +814,16 @@ class PopupView {
   }
 
   handlePopupLoaded() {
-    // This is the DOM-dependent code that used to be at the end of init() (from init_popup)
-    this.g2tButton = document.querySelector('#g2tButton');
+    // Called from mountPopup() each time the popup is freshly inserted.
+    // Resolves the popup-side DOM refs and binds every popup-internal
+    // listener. Button-side listeners live in bindButtonEvents() and are
+    // attached at button-creation time, not here.
     this.popup = document.querySelector('#g2tPopup');
     this.popupMessage = this.popup.querySelector('.popupMsg');
     this.popupContent = this.popup.querySelector('.content');
+    if (!this.g2tButton || !document.body.contains(this.g2tButton)) {
+      this.g2tButton = document.querySelector('#g2tButton');
+    }
     this.centerPopup();
     this.isInitialized = true;
 
@@ -700,7 +836,8 @@ class PopupView {
       this.pendingMessage = null;
     }
 
-    // Bind all events now that DOM is ready
+    // bindPopupEvents is one-shot guarded; calling here keeps the keyboard
+    // shortcut wired even on the very first popup mount.
     this.bindPopupEvents();
 
     // DOM event bindings moved from bindEvents()
@@ -718,44 +855,6 @@ class PopupView {
         signal: closeBtnCtrl.signal,
       });
     }
-
-    // g2tButton: mousedown / mouseenter / mouseleave
-    const btnMdCtrl = this._resetController('g2tButtonMousedown');
-    this.g2tButton.addEventListener(
-      'mousedown',
-      event => {
-        if (this.app.utils.modKey(event)) {
-          // TODO (Ace, 28-Mar-2017): Figure out how to reset layout here!
-        } else {
-          if (this.popupVisible()) {
-            this.hidePopup();
-          } else {
-            this.showPopup();
-          }
-        }
-      },
-      { signal: btnMdCtrl.signal },
-    );
-
-    const btnMeCtrl = this._resetController('g2tButtonMouseenter');
-    this.g2tButton.addEventListener(
-      'mouseenter',
-      function (evt) {
-        evt.currentTarget.classList.add('T-I-JW');
-      },
-      { signal: btnMeCtrl.signal },
-    );
-
-    const btnMlCtrl = this._resetController('g2tButtonMouseleave');
-    this.g2tButton.addEventListener(
-      'mouseleave',
-      function (evt) {
-        evt.currentTarget.classList.remove('T-I-JW');
-      },
-      { signal: btnMlCtrl.signal },
-    );
-
-    this.g2tButton.setAttribute('data-g2t-bound', '1'); // Mark as bound
 
     // board change
     const boardEl = this.popup.querySelector('#g2tBoard');
@@ -1112,6 +1211,10 @@ class PopupView {
 
     // Bind internal events
     this.bindEvents();
+
+    // Bind chrome.runtime.onMessage at app start so the keyboard shortcut
+    // works even before the user has opened the popup.
+    this.bindPopupEvents();
 
     // inject a button & a popup
     // this.finalCreatePopup(); // Moved to handleDetectButton for now

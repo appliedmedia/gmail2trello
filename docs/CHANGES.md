@@ -1,3 +1,8 @@
+=== 3.2.0.004@2026-05-04 ===
+
+* Fix the popup `[x]` close button removing the G2T icon from the Gmail toolbar. The popup now mounts on the page (not inside Gmail's toolbar) and is created on demand when you open it, then removed when you close it. Gmail's toolbar mutation observer no longer sees the popup's display change, so the icon stays put. Last-saved board, list, card, position, due date, title, and description selections still come back when you re-open.
+* Fix the `Alt+Shift+G` keyboard shortcut not working until after the first time you opened the popup with the toolbar icon. The shortcut now works from app start.
+
 === 3.2.0.003@2026-05-03 ===
 
 * Fix board-pick cascade. jQuery 4's `.trigger('change')` does not invoke native `addEventListener` handlers, so the popup view's native change listener never fired and the list/label/member dropdowns never populated. The combobox now dispatches a real `Event` on the underlying native `<select>` so both jQuery and native listeners run.
