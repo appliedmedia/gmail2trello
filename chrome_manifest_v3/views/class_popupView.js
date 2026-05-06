@@ -255,7 +255,12 @@ class PopupView {
       }
       const path = 'views/popupView.html';
       const callback = cachePopupHtml.bind(this);
-      this.app.utils.loadFile({ path, callback });
+      this.app.utils.loadFile({ path, callback }).catch(() => {
+        this.app.utils.log('PopupView: failed to load popupView.html');
+        // Clear the queued show; otherwise a failed load would leave
+        // every subsequent button click silently queued forever.
+        this._pendingShowPopup = false;
+      });
     }
   }
 

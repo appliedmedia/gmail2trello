@@ -38,8 +38,12 @@ Assume Playwright is approved. All paths relative to repo root.
 
 * `tests/playwright/playwright.config.ts` configures a single project
   named `chromium-extension` that runs in headed mode (extensions
-  cannot load in headless), with `launchPersistentContext` pointed at
-  `chrome_manifest_v3/`.
+  cannot load in headless). The fixture calls
+  `chromium.launchPersistentContext('./tests/playwright/user-data', {
+  args: ['--disable-extensions-except=chrome_manifest_v3/',
+  '--load-extension=chrome_manifest_v3/'] })`. The first argument is
+  the user data directory (gitignored); the extension path goes in
+  `args`, not as the context dir.
 * `tests/playwright/fixtures/extension.ts` exports a Playwright
   fixture that opens the unpacked extension and yields a
   `BrowserContext` plus the extension's service-worker `serviceWorker`
