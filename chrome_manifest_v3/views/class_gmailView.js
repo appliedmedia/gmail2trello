@@ -349,7 +349,12 @@ class GmailView {
   detectToolbar() {
     // was: $("[gh='mtb']", this.$root)
     let toolBar = this.root ? this.root.querySelector("[gh='mtb']") : null;
-    this.app.utils.log('GmailView:detectToolbar [gh=mtb]=' + (toolBar ? 'found' : 'null') + ' runaway=' + this.runaway);
+    this.app.utils.log(
+      'GmailView:detectToolbar [gh=mtb]=' +
+        (toolBar ? 'found' : 'null') +
+        ' runaway=' +
+        this.runaway,
+    );
 
     // was: while ($($toolBar).children().length === 1) { $toolBar = $($toolBar).children().first(); }
     while (toolBar && toolBar.children.length === 1) {

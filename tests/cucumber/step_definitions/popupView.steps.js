@@ -568,6 +568,14 @@ Then('the toolbar contains a g2tButton element', function () {
   assert.ok($('.toolbar #g2tButton').length > 0, 'Expected g2tButton in toolbar');
 });
 
+Then('no element with id {string} exists in the document', function (id) {
+  assert.strictEqual(
+    sharedDocument.querySelectorAll('#' + id).length,
+    0,
+    'Expected no element with id "' + id + '" in document',
+  );
+});
+
 Then('the toolbar contains exactly {int} g2tButton element', function (count) {
   assert.strictEqual($('.toolbar #g2tButton').length, count);
   if (this._savedHTML !== undefined) {

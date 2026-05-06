@@ -1,3 +1,12 @@
+=== 3.2.0.004@2026-05-04 ===
+
+* Fix the popup `[x]` close button removing the G2T icon from the Gmail toolbar. The popup now mounts on the page (not inside Gmail's toolbar) and is created on demand when you open it, then removed when you close it. Gmail's toolbar mutation observer no longer sees the popup's display change, so the icon stays put. Last-saved board, list, card, position, due date, title, and description selections still come back when you re-open.
+* Fix the `Alt+Shift+G` keyboard shortcut not working until after the first time you opened the popup with the toolbar icon. The shortcut now works from app start.
+* Fix the Sign-out / Reload-extension / Version-update message popups rendering raw HTML markup as literal text since 3.2.0.002. Buttons inside those messages now render as buttons.
+* Fix the `→ TRELLO` submit button never enabling on first open. Submit availability is now re-evaluated after the email subject is bound to the title field, instead of waiting for a user keystroke.
+* Fix Trello returning `invalid id` whenever you switched boards. Switching cleared the list selection but a stale event still fired a `GET lists//cards` request with an empty list id. The cards fetch is now gated on a non-empty list id at two levels.
+* Fix dragging the popup whenever you clicked on text inside it (error messages, labels, headings). Drag now ignores all text-bearing elements so you can select and copy error text without moving the window.
+
 === 3.2.0.003@2026-05-03 ===
 
 * Fix board-pick cascade. jQuery 4's `.trigger('change')` does not invoke native `addEventListener` handlers, so the popup view's native change listener never fired and the list/label/member dropdowns never populated. The combobox now dispatches a real `Event` on the underlying native `<select>` so both jQuery and native listeners run.

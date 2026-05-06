@@ -192,6 +192,11 @@ class PopupForm {
       this.parent.popupContent.style.display = '';
     }
     this.hideMessage();
+
+    // Re-evaluate submit enablement after hydration. Required because the
+    // input/change listeners only fire on user interaction; programmatic
+    // .value writes during data binding do not.
+    this.updateSubmitAvailable();
   }
 
   handleGmailDataReady(event, params) {
@@ -863,8 +868,15 @@ class PopupForm {
     }
 
     const popupMessage = this.parent.popupMessage;
-    // text is plain string in all current call sites
-    popupMessage.textContent = text;
+    // Several call sites (signOut.html, versionUpdate.html,
+    // extensionInvalidReload.html, displayExtensionInvalidReload) pass
+    // HTML containing buttons that wire up below. textContent rendered
+    // it as literal markup; parse via DOMParser and replace children.
+    popupMessage.replaceChildren();
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    Array.from(doc.body.childNodes).forEach(node =>
+      popupMessage.appendChild(node),
+    );
 
     // Attach hideMessage function to hideMsg class if in text:
     for (const el of popupMessage.querySelectorAll('.hideMsg')) {
@@ -1300,6 +1312,11 @@ class PopupForm {
     const titleEl = popup.querySelector('#g2tTitle');
     if (titleEl) {
       titleEl.value = data.subject || '';
+      // Mirror to app.temp so updateSubmitAvailable() can see the title.
+      // Without this, the → TRELLO button stayed disabled until the user
+      // typed in the title field, because app.temp.title is only written
+      // by the title input's 'input' event listener.
+      this.app.temp.title = data.subject || '';
     }
 
     this.mime_html('attachment', false, data);

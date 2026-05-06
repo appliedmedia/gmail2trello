@@ -200,11 +200,11 @@ Feature: PopupView Class
     When finalCreatePopup is called on the popupView instance
     Then the toolbar contains a g2tButton element
 
-  Scenario: finalCreatePopup emits popupLoaded
+  Scenario: finalCreatePopup does not mount popup eagerly under lazy lifecycle
     Given popup DOM with toolbar only
     And the popupView has html popup content
     When finalCreatePopup is called on the popupView instance
-    Then events.emit was called with "popupLoaded"
+    Then no element with id "g2tPopup" exists in the document
 
   # --------------------------------------------------------------------------
   # popup creation dedup for race condition fix
