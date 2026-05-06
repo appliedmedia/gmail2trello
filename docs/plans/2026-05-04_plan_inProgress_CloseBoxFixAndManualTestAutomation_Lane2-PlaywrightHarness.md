@@ -11,7 +11,7 @@ Stand up a real end-to-end automation harness so popup lifecycle bugs
 of the Lane 1 shape are caught before ship. Today the only test layer
 is Cucumber + JSDOM, which cannot reproduce Gmail's mutation observer
 side-effects. Manual tests are walked by hand against a checklist
-([2026-04-27 Wave 5 Test Matrix](</Users/acoven/dev/gmail2trello/main/docs/2026-04-27_info_Wave5TestMatrix.md>)),
+([2026-04-27 Wave 5 Test Matrix](<../2026-04-27_info_Wave5TestMatrix.md>)),
 which is the gap this lane closes.
 
 ## Toolchain decision (PENDING USER SIGN-OFF)

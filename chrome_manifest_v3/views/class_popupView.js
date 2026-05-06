@@ -246,6 +246,12 @@ class PopupView {
       function cachePopupHtml(html) {
         this.html['popup'] = html;
         this.app.utils.log('PopupView:confirmPopup: popup HTML cached');
+        // Drain a queued showPopup that bailed because HTML was not ready.
+        // Clear the flag before re-invoking to keep the call non-recursive.
+        if (this._pendingShowPopup) {
+          this._pendingShowPopup = false;
+          this.showPopup();
+        }
       }
       const path = 'views/popupView.html';
       const callback = cachePopupHtml.bind(this);
@@ -397,9 +403,10 @@ class PopupView {
 
     // Lazy mount: build the popup on demand if it is not currently in the
     // DOM. Returns false if the popup HTML template has not finished
-    // loading yet; first-open after a fresh page load may need a beat.
+    // loading yet; queue the show so the loadFile callback can retry.
     if (!this.popup || !document.body.contains(this.popup)) {
       if (!this.mountPopup()) {
+        this._pendingShowPopup = true;
         return;
       }
     }
@@ -588,10 +595,11 @@ class PopupView {
   }
 
   popupVisible() {
+    // Source of truth: popup element on the body with display:block.
+    // Intentionally does NOT check g2tButton, since Gmail can transiently
+    // remove the toolbar (and the button with it) while the popup remains
+    // open and interactive on document.body.
     if (!this.popup || !document.body.contains(this.popup)) {
-      return false;
-    }
-    if (!this.g2tButton) {
       return false;
     }
     return getComputedStyle(this.popup).display === 'block';
