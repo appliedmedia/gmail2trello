@@ -567,6 +567,11 @@ class Model {
     if (!this.app.persist.trelloAuthorized) {
       return;
     }
+    // Defensive guard: never fire `GET lists//cards` (Trello rejects with
+    // "invalid id" 400). Callers should be filtering, but belt-and-braces.
+    if (!listId) {
+      return;
+    }
 
     // Use class_trel for API call
     this.trel.getCards(listId);
@@ -705,6 +710,12 @@ class Model {
 
   handleListChanged(target, params) {
     const listId = params.listId;
+    // Board change clears persist.listId to '' and fires listChanged via
+    // the cascade. Skip the cards fetch in that case; otherwise Trello
+    // returns "GET lists//cards invalid id" and the popup shows an error.
+    if (!listId) {
+      return;
+    }
     this.loadTrelloCards(listId);
   }
 

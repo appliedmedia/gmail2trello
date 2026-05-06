@@ -323,7 +323,12 @@ class PopupView {
     this.$popup.draggable({
       disabled: false,
       containment: 'window',
-      cancel: 'a, button, input, select, textarea, .ui-autocomplete, .hideMsg',
+      // Exclude every clickable AND every text-bearing element so users
+      // can copy/paste the error text without dragging the popup.
+      // Original cancel only listed form controls; static text in
+      // .popupMsg / .content / spans / labels still grabbed the drag.
+      cancel:
+        'a, button, input, select, textarea, label, span, p, h1, h2, h3, h4, h5, h6, code, pre, .ui-autocomplete, .hideMsg, .popupMsg, .popupMsg *, .content, .content *',
     });
 
     this.$popup.resizable({
