@@ -1,7 +1,7 @@
 # Lane 1: Popup Lazy Create and Destroy
 
 **Date**: 2026-05-04
-**Status**: inProgress
+**Status**: done (merged via PR #151 as commit dc6b935 on 2026-05-07; version bumped to 3.2.0.004)
 **Parent**:
 [Close Box Fix and Manual Test Automation Orch](<2026-05-04_plan_inProgress_CloseBoxFixAndManualTestAutomation_Orch.md>)
 **Approach decided**: 2026-05-04. The simple "relocate popup to body"

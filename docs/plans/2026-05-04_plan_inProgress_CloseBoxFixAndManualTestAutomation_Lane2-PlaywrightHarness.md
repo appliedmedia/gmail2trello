@@ -1,7 +1,7 @@
 # Lane 2: Playwright Harness
 
 **Date**: 2026-05-04
-**Status**: inProgress (waiting on toolchain sign-off)
+**Status**: inProgress
 **Parent**:
 [Close Box Fix and Manual Test Automation Orch](<2026-05-04_plan_inProgress_CloseBoxFixAndManualTestAutomation_Orch.md>)
 
@@ -14,7 +14,7 @@ side-effects. Manual tests are walked by hand against a checklist
 ([2026-04-27 Wave 5 Test Matrix](<../2026-04-27_info_Wave5TestMatrix.md>)),
 which is the gap this lane closes.
 
-## Toolchain decision (PENDING USER SIGN-OFF)
+## Toolchain decision (signed off 2026-05-07: Playwright)
 
 * **Recommended primary**: Playwright. Reasons:
   * First-class Chrome extension support via

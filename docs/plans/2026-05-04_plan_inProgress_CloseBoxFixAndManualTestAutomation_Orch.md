@@ -32,7 +32,7 @@ Two related work streams running in parallel.
 
 ## Lanes
 
-* [Lane 1: Popup Lazy Create and Destroy](<2026-05-04_plan_inProgress_CloseBoxFixAndManualTestAutomation_Lane1-CloseBoxRelocate.md>)
+* [Lane 1: Popup Lazy Create and Destroy](<2026-05-04_plan_done_CloseBoxFixAndManualTestAutomation_Lane1-CloseBoxRelocate.md>)
   switches the popup to a lazy create/destroy lifecycle. Popup is
   built on demand and mounted to `document.body` when the user opens
   it, then removed entirely on close. State survives across mount
@@ -92,7 +92,43 @@ Two related work streams running in parallel.
   warranted, otherwise Lane 2 ships standalone as a tooling-only PR
   and Lane 1 piggybacks on the next user-visible release.
 
-## Decisions made 2026-05-04
+## 2026-05-08 Decisions made
+
+* **Lane 2 branch: `closebox/lane2-playwright`.** Mirrors Lane 1's
+  `closebox/lane1-lazy-popup` parent grouping. Scaffolding lands as a
+  draft PR for review while developer walks the auth bootstrap step
+  locally.
+* **A1+A2+A3 routing.** A1 (docs commit) runs foreground on `main`. A2
+  (Playwright scaffold) runs as a background agent inside a worktree
+  on branch `closebox/lane2-playwright` so `main` stays usable for A3.
+  A3 (Wave 5 / 4 matrix walk against `3.2.0.004` unpacked build) runs
+  foreground via Claude in Chrome MCP because it needs the developer's
+  authenticated Gmail + Trello session.
+* **Matrix scope for A3.** Use the Wave 5 matrix (it supersets Wave 4)
+  with one substitution: target version is `3.2.0.004`, not
+  `3.2.0.002`. Add the Lane 1 close-box assertion: after `[x]` click,
+  `#g2tButton` must remain present in `[gh='mtb']`.
+* **Lane 2 test Trello account: `a@cov.in`.** User's existing personal
+  account. No separate test account for now.
+* **Lane 2 Trello app key: reuse production G2T key.** No tests-only
+  override needed; the key shipped in the unpacked extension is already
+  public.
+* **Lane 2 test board: existing `acoven > test > <name TBD>` board.**
+  Exact board / list IDs captured during the bootstrap run, not
+  hard-coded in specs. First-cut specs assert on persisted-state shape
+  (e.g., "title field non-empty after re-open") rather than fixed IDs.
+
+## 2026-05-07 Decisions made
+
+* **Lane 1 shipped.** PR #151 merged into main as commit dc6b935 on
+  2026-05-07. Version bumped to 3.2.0.004. Three follow-up commits on
+  top of the lazy-popup change addressed two CodeRabbit review rounds
+  plus a smoke-test pass: 4d38925, 8f4d778, 24889c2.
+* **Lane 2 toolchain: Playwright.** User signed off on the recommended
+  primary harness. Claude in Chrome MCP plug-in reserved as one-off
+  exploratory tool. Scaffolding under `tests/playwright/` is unblocked.
+
+## 2026-05-04 Decisions made
 
 * **Lane 1 approach: lazy create/destroy.** Greenlit by user after
   confirming PopupForm already restores state from `app.persist` and
@@ -100,15 +136,6 @@ Two related work streams running in parallel.
 
 ## Decisions deferred (to call before execution begins)
 
-* **Toolchain confirmation for Lane 2.** The plan recommends
-  Playwright. The user mentioned Claude in Chrome MCP plug-in as an
-  acceptable fallback. We need explicit sign-off on Playwright as the
-  primary harness before scaffolding under `tests/playwright/`.
-* **Test Trello account / app key.** Lane 2 needs a Trello account
-  whose token can be checked into a developer's local
-  `tests/playwright/auth/storage-state.json` (gitignored). Open
-  question whether to reuse the production G2T Trello key or mint a
-  separate test key.
 * **CI integration.** Lane 2's first deliverable is local-runnable. CI
   integration (GitHub Actions) is a follow-up, not part of this
   orchestration.
