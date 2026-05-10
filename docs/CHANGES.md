@@ -1,3 +1,10 @@
+=== 3.2.0.5@2026-05-10 ===
+
+* Fix Trello-submit feedback never appearing after a card was created. `displaySubmitCompleteForm` queried `#g2tForm`, an id that does not exist in `popupView.html`, so it threw and left the popup stuck on "Submitting to Trello..." indefinitely. Success now renders into the existing message area and auto-restores the form after 3 seconds. The Report and Sign-out header links also stop appearing dead, since they were being hidden behind the same stuck overlay.
+* Fix `reset()` referencing dead ids `#g2tCardName` and `#g2tCardDesc`. Now clears the live `#g2tTitle` and `#g2tDesc` fields. The Report link properly clears title and description before populating the error report.
+* Drop dead listeners in `class_popupView.js` for ids `#g2tSubmit` and `#g2tSignOut` that do not exist in the popup HTML. The live buttons `#addToTrello` and `#g2tSignOutButton` are wired correctly elsewhere.
+* Drop leading zeros from the version scheme (`3.2.0.5` not `3.2.0.005`) to match `chrome://extensions` normalization.
+
 === 3.2.0.004@2026-05-04 ===
 
 * Fix the popup `[x]` close button removing the G2T icon from the Gmail toolbar. The popup now mounts on the page (not inside Gmail's toolbar) and is created on demand when you open it, then removed when you close it. Gmail's toolbar mutation observer no longer sees the popup's display change, so the icon stays put. Last-saved board, list, card, position, due date, title, and description selections still come back when you re-open.
