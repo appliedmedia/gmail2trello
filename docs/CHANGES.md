@@ -1,3 +1,7 @@
+=== 3.2.0.6@2026-05-10 ===
+
+* Reposition the popup message area (`.popupMsg`) so dialogs like Sign-out, error reports, and the post-submit success notice overlay the form directly below the header, instead of stacking below the header with a one-line gap and pushing the form down. Switched the element to `position: absolute` anchored at `top: 30px` (header height) with `left/right: 4px`, removed the conflicting `margin-top: 33px`, added a subtle drop-shadow, and removed the redundant `position: relative` from the secondary `.popupMsg` rule.
+
 === 3.2.0.5@2026-05-10 ===
 
 * Fix Trello-submit feedback never appearing after a card was created. `displaySubmitCompleteForm` queried `#g2tForm`, an id that does not exist in `popupView.html`, so it threw and left the popup stuck on "Submitting to Trello..." indefinitely. Success now renders into the existing message area and auto-restores the form after 3 seconds. The Report and Sign-out header links also stop appearing dead, since they were being hidden behind the same stuck overlay.
