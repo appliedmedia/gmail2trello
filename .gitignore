@@ -19,6 +19,9 @@ build/
 .DS_Store
 .DS_Store?
 ._*
+.claude/
+.cursor/
+
 .Spotlight-V100
 .Trashes
 ehthumbs.db
