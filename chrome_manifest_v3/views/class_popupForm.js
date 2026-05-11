@@ -498,14 +498,13 @@ class PopupForm {
 
   reset() {
     const popup = this.parent.popup;
-    // Reset form to initial state
-    const cardNameEl = popup.querySelector('#g2tCardName');
-    if (cardNameEl) {
-      cardNameEl.value = '';
+    const titleEl = popup.querySelector('#g2tTitle');
+    if (titleEl) {
+      titleEl.value = '';
     }
-    const cardDescEl = popup.querySelector('#g2tCardDesc');
-    if (cardDescEl) {
-      cardDescEl.value = '';
+    const descEl = popup.querySelector('#g2tDesc');
+    if (descEl) {
+      descEl.value = '';
     }
     const boardEl = popup.querySelector('#g2tBoard');
     if (boardEl) {
@@ -963,20 +962,21 @@ class PopupForm {
   }
 
   displaySubmitCompleteForm(params) {
-    const popup = this.parent.popup;
-    const form = popup.querySelector('#g2tForm');
+    // submit() already hid popupContent and showed popupMessage with
+    // "Submitting to Trello..."; replace that text with the success notice
+    // and auto-restore the form after 3s so another card can be submitted.
+    this.showMessage(
+      this.parent,
+      '<a class="hideMsg" title="Dismiss message">&times;</a>Card created successfully!',
+    );
 
-    const success = document.createElement('div');
-    success.className = 'g2t-success';
-    success.textContent = 'Card created successfully!';
-
-    form.style.display = 'none';
-    form.after(success);
-
-    // Auto-hide after 3 seconds
     setTimeout(() => {
-      success.remove();
-      form.style.display = '';
+      // Lazy-mount sets parent.popup = null on close; bail in that case.
+      if (!this.parent.popup) return;
+      if (this.parent.popupContent) {
+        this.parent.popupContent.style.display = '';
+      }
+      this.hideMessage();
       this.reset();
     }, 3000);
   }

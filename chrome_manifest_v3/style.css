@@ -85,11 +85,15 @@
 }
 
 #g2tPopup .popupMsg {
+    position: absolute;
+    top: 30px; /* header height; overlays .content rather than pushing it down */
+    left: 4px;
+    right: 4px;
+    z-index: 10;
     border: 1px solid #edc967;
     background: #f9edb8;
     padding: 5px 10px 15px;
-    margin: 33px 4px 4px 4px; /* was: 4px for all */
-    /* where 33px is the combination of header's height(30px) and the .content's padding (3px) */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     -webkit-user-select: auto;
     user-select: auto;
     pointer-events: auto;
@@ -170,7 +174,6 @@
 }
 
 #g2tPopup .popupMsg {
-    position: relative;
     border: 1px solid #edc967;
     font-weight: normal;
 }

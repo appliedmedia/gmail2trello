@@ -1090,26 +1090,6 @@ class PopupView {
       );
     }
 
-    // submit button
-    const submitEl = this.popup.querySelector('#g2tSubmit');
-    if (submitEl) {
-      const submitCtrl = this._resetController('submit');
-      submitEl.addEventListener('click', () => this.form.submit(), {
-        signal: submitCtrl.signal,
-      });
-    }
-
-    // sign out
-    const signOutEl = this.popup.querySelector('#g2tSignOut');
-    if (signOutEl) {
-      const signOutCtrl = this._resetController('signOut');
-      signOutEl.addEventListener(
-        'click',
-        () => this.app.events.emit('requestDeauthorizeTrello'),
-        { signal: signOutCtrl.signal },
-      );
-    }
-
     // authorize
     const authorizeEl = this.popup.querySelector('#g2tAuthorize');
     if (authorizeEl) {
