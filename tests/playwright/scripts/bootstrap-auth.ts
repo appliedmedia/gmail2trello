@@ -37,7 +37,7 @@ async function main() {
     viewport: { width: 1280, height: 900 },
   });
 
-  const gmail = context.pages()[0] ?? (await context.newPage());
+  const gmail = context.pages()[0];
   await gmail.goto("https://mail.google.com/", { waitUntil: "domcontentloaded" });
 
   const trello = await context.newPage();
