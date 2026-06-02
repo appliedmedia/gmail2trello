@@ -40,6 +40,10 @@ pids
 # Coverage directory used by tools like istanbul
 coverage/
 
+# Playwright outputs (generated on test failure; not source)
+test-results/
+playwright-report/
+
 # Temporary folders
 tmp/
 temp/

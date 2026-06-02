@@ -1,7 +1,7 @@
 # Close-Box Fix and Manual Test Automation: Orchestration
 
 **Date**: 2026-05-04
-**Status**: inProgress
+**Status**: done
 **Branch**: `main` (clean as of head 3b4bb78)
 **Supersedes Lane B of**:
 [Post Wave 5 Click and Auth Regression](<2026-05-03_plan_todo_PostWave5ClickAndAuthRegression.md>)
@@ -139,3 +139,32 @@ Two related work streams running in parallel.
 * **CI integration.** Lane 2's first deliverable is local-runnable. CI
   integration (GitHub Actions) is a follow-up, not part of this
   orchestration.
+
+## Stated goals
+
+* G1: close-box-regression: Fix the bug where clicking `[x]` in the
+  popup removes `#g2tButton` from the Gmail toolbar. Proved by: Lane 1
+  lazy-popup approach. Artifact: PR #151 merged on 2026-05-07, commit
+  `dc6b935`; Cucumber scenario `close button leaves icon intact` in
+  `tests/cucumber/features/`.
+* G2: playwright-harness: Stand up a Playwright e2e harness so popup
+  lifecycle regressions are caught before ship. Proved by: Lane 2
+  scaffold. Artifact: PR #152 merged on 2026-05-08, commit `8acb97b`;
+  `tests/playwright/` directory present on `main`; `npm run test:e2e`
+  script wired in `package.json`.
+
+## 2026-06-01 Preflip audit (AndrewC)
+
+* G1: PROVED. Lazy-popup fix verified in codebase. Selector
+  `[gh='mtb'] #g2tButton` asserted truthy after `[x]` click in both
+  Cucumber and Playwright specs.
+* G2: PROVED. All scaffold files present on `main` (fixture, helpers,
+  two specs, bootstrap script, README). `npm run test:e2e` wired.
+  `auth/storage-state.json` gitignored and present locally (bootstrapped).
+  Note (TBV): `popup-hydrates` spec selector was corrected from `#title`
+  to `#g2tTitle` in commit `699dbfb`; a live run against a bootstrapped
+  session is needed to confirm the fix passes end-to-end. This is a
+  follow-up verification, not a blocker for this orch.
+* Housekeeping: added `test-results/` and `playwright-report/` to
+  `.gitignore` in this preflip commit (Playwright generates these on
+  failure; they were untracked).

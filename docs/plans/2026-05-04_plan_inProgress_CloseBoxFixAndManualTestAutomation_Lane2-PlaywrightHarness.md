@@ -1,7 +1,7 @@
 # Lane 2: Playwright Harness
 
 **Date**: 2026-05-04
-**Status**: inProgress
+**Status**: done
 **Parent**:
 [Close Box Fix and Manual Test Automation Orch](<2026-05-04_plan_inProgress_CloseBoxFixAndManualTestAutomation_Orch.md>)
 
