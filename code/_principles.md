@@ -159,6 +159,19 @@ The unit of parallel work is a *wave*: a set of swimlanes (each a lane doc under
 * One PR per wave. Per-swimlane commits inside that PR are fine and encouraged --- they preserve the per-lane authorship trail --- but the PR itself is the wave. Reviewers see one diff, one CI run, one merge.
 * On merge, the wave is torn down completely. Every swimlane branch (local and remote), every worktree, and every in-flight agent workstream tied to that wave is deleted. The next wave starts from a clean repo state, not a graveyard of stale branches.
 
+### P18. Analytics events flow through the action stream (PostHog)
+
+Every project ships PostHog forwarding via the action stream. For G2T Panel this means:
+
+* The service worker registers an analytics subscriber component (`Analytics`) at composition time.
+* `Analytics` subscribes to the action stream and captures each successful action as a PostHog event. The PostHog SDK (or a thin HTTP call to the PostHog capture endpoint) lives only inside `Analytics`. No view or other component imports PostHog directly, holds the API key, or calls the capture endpoint.
+* The sidepanel knows nothing about PostHog; the content script knows nothing about PostHog.
+* First-party event data only: `cmd` name, `ok` flag, duration, and anonymous session id. No PII. No email content.
+
+Target checkpoint for implementation: **Chk6 SUV** (polish + observability). Setting up the PostHog project and inserting the `Analytics` component into the worker composition root is a named gate in the Chk6 orch's `## Stated goals` section.
+
+Free-tier note: PostHog offers 1M events/month free. Set a billing alert at the smallest threshold above $0 once volume crosses to paid.
+
 ## How these principles apply to AI-assistant behavior
 
 * **P6** forces commit-message citation. That is the enforcement owed.

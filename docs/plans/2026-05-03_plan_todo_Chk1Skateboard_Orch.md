@@ -135,6 +135,24 @@ all later stages unless an intervention overrides):
   [code/_arch.md](</Users/acoven/dev/gmail2trello/main/code/_arch.md>)
   "Source pluggability."
 
+## Stated goals
+
+* G1: scaffold-substrate: Registry, ActionDispatcher, and ping round-trip land in `code/src/`. Proved by: Lane 1. Artifact: `npm run build` clean + Cucumber feature `skeleton.feature` passing + unpacked-install ping confirmed.
+* G2: gmail-bridge: `GmailEnvironment` component captures active email and forwards to sidepanel via `gmail.context.changed` action. Proved by: Lane 2. Artifact: Cucumber feature `gmail-bridge.feature` + real-Gmail smoke (email subject + sender appear in panel within 1s of thread open).
+* G3: trello-auth-api: OAuth1 sign-in completes, `trello.boards.list` / `trello.lists.list` / `trello.card.create` handlers real (no mocks). Proved by: Lane 3. Artifact: Cucumber feature `trello-auth.feature` + real Trello smoke (board picker populates, card created on submit).
+* G4: sidepanel-ui: All five Skateboard panel states render correctly; twelve-item validation contract in `_project_mgmt.md` passes end-to-end. Proved by: Lane 4. Artifact: Cucumber feature `sidepanel-form.feature` + full twelve-item manual run on a fresh Chrome profile.
+
+## Swimlane modelpicker formulas
+
+Record before spawning each delegate agent. Architecture is fully specified (Registry shape from print2paper4vscode, action envelope from claiyr, folder layout locked in `code/_arch.md`), so specificity is high.
+
+* Lane 1 -- Scaffold + Sidepanel: `mod:c60:s70='claude-haiku-4-5/claude'` (moderate complexity, well-specified structure; haiku at high specificity per lookup).
+* Lane 2 -- Gmail Bridge: `mod:c55:s70='claude-haiku-4-5/claude'` (bounded scope: GmailEnvironment seam + one action handler; interfaces fully defined).
+* Lane 3 -- Trello Auth + API: `mod:c60:s65='claude-haiku-4-5/claude'` (OAuth1 + six action handlers, all typed contracts in lane plan).
+* Lane 4 -- Sidepanel UI: `mod:c50:s65='claude-haiku-4-5/claude'` (vanilla DOM views, layout described in lane plan; logic stays in worker).
+
+Complexity note: all four lanes score c35..69 with >=s50, mapping to `claude-haiku-4-5/claude`. If a lane's scope grows or the seam contracts shift unexpectedly, escalate to `claude-opus-4-8/claude` and record the reason.
+
 ## What "done" for Chk1 Skateboard looks like
 
 The single source of truth for Chk1 acceptance is the **Skateboard
