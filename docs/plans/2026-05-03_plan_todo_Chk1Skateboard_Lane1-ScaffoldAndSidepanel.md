@@ -154,6 +154,42 @@ All paths under `code/`.
 * Acceptance: `npm run build` is green, `npm test` is green, manual
   smoke passes.
 
+## Evaluator briefs
+
+**ARCH** `mod:c75:s50='claude-opus-4-8/claude'`
+
+* Registry is the sole DI mechanism: no component is instantiated
+  outside `reg.use()`. Cycle detection is present in the Registry
+  port. No singleton escapes the registry.
+* `ActionRequest`/`ActionResponse`/`ActionError` types are defined
+  once in `src/composition/types.ts` and not duplicated elsewhere.
+* `src/actions/registry.ts` is the single place handlers are
+  registered. No inline `dispatcher.register()` calls anywhere else.
+* `chrome.action.onClicked` handler is in the worker, not the
+  sidepanel. Off-Gmail redirect logic lives in the worker only.
+
+**QUALITY** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `features/skeleton.feature` must exist with at least two scenarios:
+  "Registry composes and disposes cleanly" and "ping round-trip
+  returns typed response."
+* TSDoc on `Registry`, `ActionDispatcher`, `App` composition root,
+  all types in `types.ts`.
+* `npm run build` exits 0. `npm test` exits 0 with no skipped
+  scenarios.
+* The `chrome_manifest_v3/` directory is byte-for-byte unchanged
+  (diff = empty).
+
+**PROCESS** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `Produces:` `code/` scaffold: manifest, Registry port, ActionDispatcher,
+  ping handler, esbuild config, tsconfig, Cucumber harness, skeleton.feature.
+* `Not produces:` gmail-env component, trello-auth component, sidepanel
+  UI views, orch updates, any edit to `chrome_manifest_v3/`.
+* All writes use absolute paths under the assigned worktree. First
+  message includes `Rehydrated:` header listing files opened.
+* Lane is not marked done while its integration PR is open.
+
 ## Out of scope for this lane
 
 * Any Gmail content script. Lane 2.

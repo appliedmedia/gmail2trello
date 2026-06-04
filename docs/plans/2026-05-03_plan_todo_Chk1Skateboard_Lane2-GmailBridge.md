@@ -226,6 +226,45 @@ All paths under `code/`.
   `chrome.tabs.query({ active: true, currentWindow: true })`.
 * Gmail DOM redesigns. The same risk the current extension has. Not new.
 
+## Evaluator briefs
+
+**ARCH** `mod:c75:s50='claude-opus-4-8/claude'`
+
+* P10 seam: grep confirms zero imports of `gmail.min.js` outside
+  `src/components/gmail-env/`. No other component calls gmail.js
+  methods directly.
+* `createContentApp` registers only `[Utils, Diagnostics,
+  GmailEnvironment]`. No Trello components in content context.
+* `gmail.context.changed` and `gmail.context.get` are registered in
+  `src/actions/registry.ts`, not wired inline in the worker boot.
+* The `GmailContext` type is defined once in `gmail.types.ts` and
+  imported by content, worker, and sidepanel; not redefined in each.
+
+**QUALITY** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `features/gmail-bridge.feature` must exist with at minimum three
+  scenarios: "panel shows subject and sender on email open," "panel
+  updates when user navigates to another email," "panel shows idle
+  state when no Gmail tab is active."
+* TSDoc on `GmailEnvironment` (all public methods and their contracts),
+  `parse-email.ts` (purpose, invariants, attachment-regex reference),
+  `gmail.types.ts` (all fields with their nullability semantics).
+* No `chrome.storage` keys leaked: after tab close, no orphan
+  `g2t.gmailContext.*` keys remain.
+* `npm test` exits 0 including the new Lane-2 scenarios.
+
+**PROCESS** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `Produces:` GmailEnvironment component, parse-email.ts, gmail.types.ts,
+  gmail.min.js vendor copy, content-script entry, two action handlers,
+  GmailContextStore (sidepanel variant), gmail-bridge.feature.
+* `Not produces:` TrelloAuth, TrelloApi, sidepanel UI views, orch updates,
+  any edit to `chrome_manifest_v3/`.
+* Lane 1 scaffold must be landed (merged to main) before this lane's
+  task workers start writing source files.
+* All writes use absolute paths under the assigned worktree. First
+  message includes `Rehydrated:` header.
+
 ## Out of scope for this lane
 
 * Any Trello call (Lane 3).

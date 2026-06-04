@@ -173,3 +173,78 @@ In addition:
 * Status dashboard in
   [code/README.md](</Users/acoven/dev/gmail2trello/main/code/README.md>)
   shows Chk1 Skateboard "DONE" and Chk2 Scooter "TODO."
+
+## Evaluator briefs
+
+Spawn these three antagonistic evaluators at orch open and re-spawn (or
+continue) at each lane milestone. Findings go in `## Review findings`
+below. Every finding must be resolved or carry-forwarded before orch close.
+
+**ARCH** `mod:c75:s50='claude-opus-4-8/claude'`
+
+Generic charter: seams shipped without consumer wiring, goal/impl
+divergence, UI doing core work, side-channels, new abstractions
+without principle citation.
+
+Specific watch-items for Chk1:
+
+* P10 seam containment: grep confirms zero imports of `gmail.min.js`
+  outside `src/components/gmail-env/`. Grep confirms zero raw `fetch`
+  to `trello.com` outside `src/components/trello/`.
+* P11 channel integrity: sidepanel has no direct reference to
+  `TrelloAuth`, `TrelloApi`, or `GmailEnvironment`. Every worker call
+  goes through `ActionClient.dispatch`.
+* P2 registration-time wiring: every `cmd` in `src/actions/registry.ts`
+  has a corresponding handler file; no orphan cmds, no runtime
+  `registerAction` calls.
+* G1..G4 goal/impl parity: each stated goal has a real-system artifact
+  (not a mock proof). Confirm `createWorkerApp` composition root
+  contains no `MockTrelloApi` or `MockGmailEnvironment`.
+
+**QUALITY** `mod:c65:s40='claude-opus-4-8/claude'`
+
+Generic charter: absent/empty/weak test artifacts, PROVED claimed
+without a real run, mocks in production code path, dead code, weak
+error paths, missing TSDoc, doc drift.
+
+Specific watch-items for Chk1:
+
+* Feature files that must exist with real scenario coverage:
+  `features/skeleton.feature`, `features/gmail-bridge.feature`,
+  `features/trello-auth.feature`, `features/sidepanel-form.feature`.
+* `npm test` must pass green on main. Any failing or skipped scenario
+  is a QUALITY finding.
+* TSDoc present on all exported classes, interfaces, and functions in
+  `src/composition/`, `src/actions/`, and every component in
+  `src/components/`.
+* Token security: grep confirms the Trello token value never appears
+  in `console.log`, `chrome.storage.session`, or sidepanel DOM.
+* Error paths: every action handler has an explicit error path
+  returning `{ ok: false, error: { code, message, friendly } }`.
+
+**PROCESS** `mod:c65:s40='claude-opus-4-8/claude'`
+
+Generic charter: worktree violations, chat interstitials, synthesis
+docs, skipped retro, unexecuted `[_]` corrective actions, delegate
+agent marking task complete while its PR is still open.
+
+Specific watch-items for Chk1:
+
+* Worktree paths: delegate agents work under
+  `.claude/worktrees/agent-<id>/`. Any Write/Edit to the canonical
+  main worktree path is a PROCESS violation.
+* AUTODECISIONS section in this orch grows upward; every reversible
+  decision taken autonomously is logged there.
+* `_interventions.md` INT-0001 and INT-0002 corrective action items
+  are `[x]`-ed when the referenced artifacts land.
+* No standalone synthesis, rollup, or BlockerResponse plans created
+  in `docs/plans/`. Blockers live in this orch's Blockers section.
+* No lane is marked done while its PR is open or unmerged.
+
+## AUTODECISIONS
+
+*(newest first -- grows upward as overnightit runs)*
+
+## Review findings
+
+*(newest first -- ARCH / QUALITY / PROCESS findings logged here)*

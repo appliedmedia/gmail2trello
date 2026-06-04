@@ -252,6 +252,54 @@ All paths under `code/`.
   handler and keep an integration test that exercises a real
   multi-attachment thread.
 
+## Evaluator briefs
+
+**ARCH** `mod:c75:s50='claude-opus-4-8/claude'`
+
+* Every view is a Registry component: header, source-card,
+  destination-card, details-card, action-bar, idle each have
+  `static readonly id` and declare collaborators via `reg.use()`.
+  No view imports another view directly.
+* Views do not import `TrelloApi`, `TrelloAuth`, `GmailEnvironment`,
+  or `ActionClient` directly. Every data access goes through
+  `reg.use('actionClient.dispatch')` or a store subscription.
+* All state mutation flows through action dispatch. No view holds
+  authoritative state in a module-level variable.
+* Combobox and render helpers are UI primitives (not Registry
+  components), fed by action responses only, never by direct API
+  calls.
+
+**QUALITY** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `features/sidepanel-form.feature` must cover all five Skateboard
+  panel states: off-Gmail, Gmail/no-email-open, Gmail/signed-out,
+  Gmail/signed-in, post-success.
+* Scenario coverage also required for: board change cascades to list
+  reset, "Add to Trello" disabled until a list is chosen, submit
+  dispatches `trello.card.create` with correct payload, success state
+  renders card link and "Add another."
+* TSDoc on each view component (class, constructor collaborators,
+  public `render()` method).
+* Keyboard-only completion verified: every control reachable via Tab,
+  every action triggerable via Enter/Space.
+* The 12-item Skateboard validation contract from `_project_mgmt.md`
+  is manually run and every item passes. Results recorded as a
+  walkthrough paragraph in the orch's `## Review findings` section
+  (auditor name + date).
+
+**PROCESS** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `Produces:` six view components, combobox + render helpers,
+  sidepanel.html, sidepanel.css, sidepanel.ts coordinator,
+  sidepanel-form.feature.
+* `Not produces:` worker-side action handlers beyond what Lane 3
+  specified, gmail-env changes, orch updates, any edit to
+  `chrome_manifest_v3/`.
+* Depends on Lanes 1, 2, and 3 merged to main before task workers
+  start writing view source files.
+* All writes use absolute paths under the assigned worktree. First
+  message includes `Rehydrated:` header.
+
 ## Out of scope for this lane
 
 * Saved presets ("save this board+list combination as a default for

@@ -258,6 +258,50 @@ All paths under `code/`.
   logging the token value; centralize logging behind a `redact()`
   helper that masks anything looking like a token.
 
+## Evaluator briefs
+
+**ARCH** `mod:c75:s50='claude-opus-4-8/claude'`
+
+* P10 seam: grep confirms zero raw `fetch` calls to `trello.com` or
+  `api.trello.com` outside `src/components/trello/trello-api.ts`.
+* Token never crosses into sidepanel context. Grep confirms no
+  Trello token value in `src/sidepanel/`. Sidepanel dispatches
+  `trello.signIn` via `ActionClient`; it never calls `TrelloAuth`
+  directly.
+* `markInvalid()` is called on every 401 before throwing
+  `TrelloAuthRequiredError`. No 401 silently swallowed.
+* `TrelloApi` declares `trelloAuth.getToken`, `trelloAuth.markInvalid`,
+  and `utils.fetchWithBackoff` in its `reg.use()` call. No hidden
+  singleton access.
+
+**QUALITY** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `features/trello-auth.feature` must cover: sign-in flow (stub
+  `chrome.identity.launchWebAuthFlow`), sign-out clears token, 401
+  recovery triggers re-auth prompt, token never logged.
+* `features/trello-api.feature` must cover the six Chk1 handlers
+  against fixture responses: `boards.list`, `lists.list`,
+  `card.create`, plus auth-state and sign-out.
+* Fixture files in `tests/fixtures/trello/` captured from a real
+  Trello API call. Checked in. No live network calls in CI.
+* TSDoc on `TrelloAuth` (all public methods + storage contracts),
+  `TrelloApi` (all methods + 401/429 behavior), `TrelloAuthRequiredError`,
+  all types in `trello.types.ts`.
+* Lint or grep confirms no `console.log` call receives a token value.
+
+**PROCESS** `mod:c65:s40='claude-opus-4-8/claude'`
+
+* `Produces:` TrelloAuth + TrelloApi components, trello.types.ts,
+  fetchWithBackoff helper, ActionClient, six Chk1 action handlers,
+  fixture files, trello-auth.feature, trello-api.feature.
+* `Not produces:` sidepanel UI views, gmail-env changes, orch updates,
+  any edit to `chrome_manifest_v3/`.
+* Lane 1 scaffold must be landed before task workers start. Lane 2
+  may run in parallel (no shared source files; shared seam is the
+  action registry, which Lane 3 extends additively).
+* All writes use absolute paths under the assigned worktree. First
+  message includes `Rehydrated:` header.
+
 ## Out of scope for this lane
 
 * Multi-org / Trello Enterprise SSO. Future work; not blocking v1.

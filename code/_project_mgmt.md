@@ -144,6 +144,11 @@ Cross-project rules live in [`~/dev/devtools/main/ai.yaml`](~/dev/devtools/main/
 * `projmgmt.preflip_protocol` -- 6-step close ritual before any orch flips to done.
 * `audit.per_goal_protocol` -- `## Stated goals` section (G1..GN with PROVED/GAP/CARRY-FORWARD) required before orch can close.
 * `projmgmt.blockers_template` -- ratification stack format for irreversible decisions.
+* `discipline.execution_hierarchy` -- 4-level fan-out: Orch spawns Wave agents, Wave spawns Lane agents, Lane spawns Task workers. **Only task workers Write/Edit source files.** Orch/Wave/Lane levels orchestrate, integrate, and review; they never edit source themselves.
+* `discipline.delegate_agents.single_deliverable_per_agent` -- every spawn brief must name exactly one artifact in a `Produces:` line and list adjacent things it must NOT touch in a `Not produces:` line.
+* `discipline.delegate_agents.rehydrate_on_spawn` -- every agent opens role-specific files in its first 3 non-preflight actions, then writes `Rehydrated: <files>` as its first message. Absence of that header = orchestrator aborts and files an INT.
+* `discipline.review_agents` -- ARCH/QUALITY/PROCESS triad fires **in-wave**, concurrent with workers, at orch open AND at each milestone. Findings go in the orch's `## Review findings` section (newest first). Orch cannot close until every finding is resolved or carry-forwarded.
+* `discipline.review_agents.watchdog` -- a CronCreate heartbeat fires every <=10 minutes for the entire duration of any active work. Orchestrator must have one running before reporting any "waiting" status. On each fire: verify liveness directly, act on anything stalled or ready, advance the queue.
 
 No local copy of these rules is maintained here to avoid drift. If a rule feels unclear in context, read the ai.yaml section directly.
 
