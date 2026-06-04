@@ -137,108 +137,15 @@ Until the regeneration is automated, the regeneration step is a checklist item t
 
 ## Wave and PR process
 
-### Gate 1: CURMUDGEONLY SENIOR ARCHITECT (pre-PR, mandatory)
+Cross-project rules live in [`~/dev/devtools/main/ai.yaml`](~/dev/devtools/main/ai.yaml) and apply in full. The sections that gate every PR and orch close for this project are:
 
-Before `gh pr create`, spawn a background agent with this persona and scope:
+* `prreview` -- three quality gates: Gate 1 CURMUDGEONLY SENIOR ARCHITECT pre-PR (iterate to zero deficiencies before `gh pr create`), Gate 2 CodeRabbit (mandatory `@coderabbitai: please review entire pr` as last line of PR body), Gate 3 HARD-ASS REVIEWER PERSONA if CR silent after 5 min (1-hour fail-forward cap).
+* `conventions.macros.modelpicker` -- record `mod:cXX:sYY='model-id/agent-id'` in every swimlane entry before spawning. G2T-specific formulas are in each checkpoint's orch doc.
+* `projmgmt.preflip_protocol` -- 6-step close ritual before any orch flips to done.
+* `audit.per_goal_protocol` -- `## Stated goals` section (G1..GN with PROVED/GAP/CARRY-FORWARD) required before orch can close.
+* `projmgmt.blockers_template` -- ratification stack format for irreversible decisions.
 
-> "You are a curmudgeonly senior architect who has watched every shortcut eventually bite a team in production. Review this branch against its stated goal document with zero tolerance for: incomplete goal coverage, missing or weak tests, dead code, spec deviations, security holes, concurrency hazards, missing error paths, naming inconsistencies, doc omissions, accessibility gaps, or anything else sub-par. List every deficiency, no matter how small. Do not soften feedback."
-
-The agent reads: (1) the lane plan or orch goal that motivated the branch, (2) every test file changed or added, (3) every source-file diff against main. Apply all flagged fixes in the worktree, re-spawn with the updated diff, repeat until the agent reports no new deficiencies. Only then open the PR.
-
-Modelpicker for Gate 1: `mod:c75:s50='claude-opus-4-8/claude'` (complex retro-authoring review, partially-specified scope).
-
-### Gate 2: CodeRabbit (mandatory)
-
-* Include `@coderabbitai: please review entire pr` as the **last line** of every PR description body.
-* Wait 5 minutes after opening before checking.
-* Address every finding: validate (👍), already-fixed (😎), wont-do (🚫 with a substantive reason, not "big change"), or fix-applied (🤩 commit link).
-* Post one top-level summary comment listing all responses before closing the cycle. Use `gh api` for all comment posting (never the GitHub UI).
-
-### Gate 3: HARD-ASS REVIEWER PERSONA (CR-absent backup)
-
-If CR has not responded 5 minutes after the PR was opened:
-
-* Add a Blocker entry to the orch's `# YYYY-MM-DD Blockers: {N}` section.
-* Spawn a substitute agent: "You are a senior staff engineer doing a rigorous PR review. Flag every concern: correctness, edge cases, performance, security, test coverage, documentation, naming, error handling, lifecycle, accessibility. Be terse and direct. No nitpicks; substantive only." Modelpicker: `mod:c65:s50='claude-opus-4-8/claude'` (complexity >= 0.65 floor for review work).
-* Continue the prreview cycle against the substitute's findings.
-* If CR still has not responded after 1 hour total, merge anyway ("fail forward, continuing to make progress") and record the PR URL in the Blocker entry.
-
-### Modelpicker (required before every delegate agent spawn)
-
-Record two scores (each 00..99) in the swimlane entry before spawning. Format: `mod:cXX:sYY='model-id/agent-id'`.
-
-Complexity anchors:
-
-* c10: rename a symbol, fix lint.
-* c40: implement endpoint against a fully-specified API contract.
-* c70: design a new abstraction boundary between two previously-coupled services.
-* c90: decompose a novel milestone with no prior decomposition.
-
-Specificity anchors:
-
-* s10: goal only, no approach.
-* s40: component + behaviour named; no file list or step sequence.
-* s70: file list + interface signatures + integration points + step order.
-* s90: exact paths + method sigs + wire shapes + test cases + acceptance criteria.
-
-Model lookup (Claude Code runtime):
-
-* `>=c70:<s60`: `claude-opus-4-8/claude`
-* `>=c70:>=s60`: `claude-opus-4-8/claude`
-* `c35..69:<s50`: `claude-opus-4-8/claude`
-* `c35..69:>=s50`: `claude-haiku-4-5/claude`
-* `<c35:<s30`: `claude-sonnet-4-6/claude`
-* `<c35:>=s30`: `claude-haiku-4-5/claude`
-
-Note: complexity is effectively logarithmic. The gap c70..c90 is qualitatively larger than c10..c30.
-
-### Preflip protocol (6 ordered steps before any orch flips to done)
-
-1. **Commit/push/verify**: `git status` clean, final commit for any in-flight edits, push, confirm PR merged to main. Run `pruneit` immediately after merge.
-2. **Audit**: run per_goal_protocol against the orch's `## Stated goals` section (see below). Every G*n* must reach PROVED, GAP, or CARRY-FORWARD. Run close-readiness checks: README freshness, any device verification required by the checkpoint.
-3. **Retro**: capture every surprise from the wave (review corrections, scope drifts, principles that bent under load, estimates that were off). Each surprise is a candidate intervention.
-4. **Integrate learnings**: file INT-NNNN entries in `_interventions.md` for surprises needing durable capture. Each entry carries `Corrective actions:` bullets with `[_]` checkboxes (see `_interventions.md` format).
-5. **Refresh dashboard**: recount tasks, rewrite the TLDR block and phase ladder in `code/README.md`.
-6. **Flip filename**: `git mv docs/plans/YYYY-MM-DD_plan_inProgress_<name>.md docs/plans/YYYY-MM-DD_plan_done_<name>.md` in a **separate** final commit. Once flipped, the orch is immutable.
-
-### Audit per_goal_protocol
-
-Every orch must have a `## Stated goals` section before it can close. Format:
-
-```markdown
-## Stated goals
-
-* G1: short-slug: Description. Proved by: lane references. Artifact: transcript/test feature/commit.
-* G2: short-slug: ...
-```
-
-Record one verdict per goal:
-
-* **PROVED**: artifact present, real-system demonstrated (not mocked), signed off this session.
-* **GAP**: artifact missing or insufficient. Closure path: addendum lane plan + new INT entry.
-* **CARRY-FORWARD**: explicitly deferred to a named next checkpoint with an annotation.
-
-Cross-cutting concerns that MUST appear as goals when relevant: analytics (PostHog), auth security, accessibility, i18n. If a checkpoint genuinely does not reach any of these, state that explicitly rather than omitting the check.
-
-### Blockers template
-
-When a decision is irreversible or needs operator ratification, add a blockers section at the **top** of the relevant orch:
-
-```markdown
-# YYYY-MM-DD Blockers: {N}
-
-## Item X of {N}: Short title (source-link)
-
-* ELI5 problem: one plain sentence.
-* nA: option A + main tradeoff.
-* nB: option B.
-* **>>nC<<**: recommended option (always last, bolded).
-* YYYY-MM-DD.NNN_BLOCKERS_DECISION_XX_OF_NN:
-```
-
-Slug parts: `YYYY-MM-DD` = section authoring date; `NNN` = per-section identifier (zero-padded 3 digits, shared by all items in one orch section); `XX_OF_YY` = item position over total (both zero-padded 2 digits). Reviewer writes decision after the colon; empty colon = still open.
-
-Low-confidence reversible decisions (seed-data content, threshold values, test-flag selection) are AUTODECISIONS: document inline as `AUTODECISION: <decision>`, never surface as a stopper.
+No local copy of these rules is maintained here to avoid drift. If a rule feels unclear in context, read the ai.yaml section directly.
 
 ## What goes at the bottom of `code/README.md`
 
