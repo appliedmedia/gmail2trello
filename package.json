@@ -39,7 +39,7 @@
   },
   "homepage": "https://g2t.support",
   "devDependencies": {
-    "@cucumber/cucumber": "^12.8.2",
+    "@cucumber/cucumber": "^13.0.0",
     "@playwright/test": "^1.48.0",
     "@types/node": "^22.0.0",
     "eslint": "^10.3.0",
