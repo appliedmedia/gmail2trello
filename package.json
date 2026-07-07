@@ -42,7 +42,7 @@
     "@cucumber/cucumber": "^13.0.0",
     "@playwright/test": "^1.48.0",
     "@types/node": "^26.1.0",
-    "eslint": "^10.3.0",
+    "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "^17.6.0",
